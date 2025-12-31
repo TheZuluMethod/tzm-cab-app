@@ -1,0 +1,146 @@
+/**
+ * Supabase Edge Function: Create Stripe Checkout Session
+ * 
+ * SECURITY: This function runs server-side and keeps the Stripe secret key secure.
+ * Never expose the secret key to the frontend!
+ */
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Get Stripe secret key from environment (set in Supabase Dashboard)
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set')
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+    })
+
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || req.headers.get('apikey') || ''
+    
+    // Use anon key for auth verification (service_role can verify but anon is more standard)
+    const supabaseAuth = supabaseAnonKey 
+      ? createClient(supabaseUrl, supabaseAnonKey)
+      : createClient(supabaseUrl, supabaseServiceKey)
+    
+    // Use service role for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      console.error('No authorization header in request')
+      throw new Error('No authorization header')
+    }
+
+    // Verify user is authenticated
+    const token = authHeader.replace('Bearer ', '')
+    
+    if (!token || token.length < 10) {
+      console.error('Invalid token format:', token.substring(0, 20))
+      throw new Error('Invalid authorization token')
+    }
+    
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
+    
+    if (authError) {
+      console.error('Auth verification error:', authError.message, authError.status)
+      throw new Error(`Unauthorized: ${authError.message}`)
+    }
+    
+    if (!user) {
+      console.error('No user returned from auth verification')
+      throw new Error('Unauthorized: User not found')
+    }
+    
+    console.log('User authenticated:', user.id, user.email)
+
+    // Parse request body
+    const { priceId } = await req.json()
+
+    if (!priceId) {
+      throw new Error('Price ID is required')
+    }
+
+    // Get user email from Supabase
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('id', user.id)
+      .single()
+
+    const userEmail = userData?.email || user.email
+
+    // Get site URL from environment or use default
+    const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173'
+
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      customer_email: userEmail,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${siteUrl}/?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      cancel_url: `${siteUrl}/?canceled=true`,
+      metadata: {
+        userId: user.id,
+      },
+      subscription_data: {
+        metadata: {
+          userId: user.id,
+        },
+      },
+    })
+
+    // Log payment intent creation
+    await supabase.from('payment_intents').insert({
+      user_id: user.id,
+      stripe_payment_intent_id: session.payment_intent as string || session.id,
+      stripe_checkout_session_id: session.id,
+      amount: 9900, // $99.00 in cents
+      currency: 'usd',
+      status: 'pending',
+    })
+
+    return new Response(
+      JSON.stringify({ sessionId: session.id }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    )
+  } catch (error: any) {
+    console.error('Error creating checkout session:', error)
+    return new Response(
+      JSON.stringify({ error: error.message || 'Failed to create checkout session' }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      }
+    )
+  }
+})
+

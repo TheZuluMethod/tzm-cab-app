@@ -1,0 +1,45 @@
+{
+  "name": "the-zulu-method-cab-20251222",
+  "version": "1.0.0",
+  "description": "The Zulu Method CAB 20251222 - Customer Advisory Board (CAB) application for The Zulu Method - AI-powered board analysis and feedback",
+  "type": "module",
+  "private": true,
+  "author": "The Zulu Method",
+  "license": "UNLICENSED",
+  "keywords": [
+    "customer-advisory-board",
+    "ai-analysis",
+    "ux-research",
+    "persona-analysis",
+    "market-research"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "@google/genai": "^1.30.0",
+    "@perplexity-ai/perplexity_ai": "^0.16.0",
+    "@stripe/stripe-js": "^8.6.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "@types/nodemailer": "^7.0.4",
+    "lucide-react": "^0.554.0",
+    "nodemailer": "^6.10.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "recharts": "^3.6.0",
+    "remark-gfm": "^4.0.0",
+    "stripe": "^20.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

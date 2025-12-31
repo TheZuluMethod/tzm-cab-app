@@ -1,0 +1,11 @@
+# Ensure sensitive files are never committed
+*.env filter=git-crypt diff=git-crypt
+*.env.local filter=git-crypt diff=git-crypt
+*.env.*.local filter=git-crypt diff=git-crypt
+supabase/functions/.env* filter=git-crypt diff=git-crypt
+
+# Prevent accidental commits of secrets
+**/secrets/** filter=git-crypt diff=git-crypt
+**/*secret* filter=git-crypt diff=git-crypt
+**/*key* filter=git-crypt diff=git-crypt
+

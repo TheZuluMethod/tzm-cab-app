@@ -1,0 +1,5 @@
+# Supabase Edge Functions
+# Ignore any local build artifacts or Deno cache
+.deno/
+dist/
+
