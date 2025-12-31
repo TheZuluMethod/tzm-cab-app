@@ -1701,13 +1701,22 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
     - If it doesn't exist: Create a comprehensive llm.txt file recommendation below
     
     **Recommended llm.txt Content** (if missing):
-    [Provide a complete, ready-to-use llm.txt file content that includes:
-    - Site overview and purpose
-    - Key pages and their purposes
-    - Important content sections
-    - Contact information
-    - How to cite the site
-    - Any other relevant information for AI systems]
+    
+    CRITICAL: You MUST generate a complete, ready-to-use llm.txt file content. Do NOT use placeholders or brackets. Generate the ACTUAL file content based on:
+    - Site overview and purpose (from ${input.companyWebsite || 'the website'})
+    - Key pages and their purposes (from actual website analysis)
+    - Important content sections (from actual site review)
+    - Contact information (from actual site analysis)
+    - How to cite the site (standard format)
+    - Company name, products, and key information (from research)
+    
+    Format the llm.txt content in a code block:
+    
+    \`\`\`
+    [ACTUAL LLM.TXT FILE CONTENT HERE - Generate complete file based on actual website research]
+    \`\`\`
+    
+    The content must be a complete, valid llm.txt file that can be directly uploaded to the website root.
     
     **Why You Need This:**
     - Improves visibility in Google's Generative Experience and AI Overviews
@@ -1895,17 +1904,23 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
     9. ${verifiedResearchData ? 'CRITICAL: Integrate the VERIFIED research data above (verified by both Perplexity AI and Gemini AI) to provide fact-checked, current market insights. All research data has been verified for veracity, enhanced with depth/breadth, and checked for hallucinations. Cross-reference findings with the verified research data.' : 'Perform deep research and fact-checking against the provided context, competitor landscape, SEO keyword insights, company size/revenue context, and general knowledge.'}
     ${specializedRequirements}
 
-    CRITICAL FORMATTING RULES:
+    CRITICAL FORMATTING RULES (MUST BE FOLLOWED EXACTLY):
     1.  DO NOT include any preamble or intro text. Start directly with the first Header.
     2.  Use exactly the Section Headers provided below (H1 #). H1 headers must be bold and use # at the start of the line.
     3.  Never duplicate Section Headers in the body content below the header.
-    4.  Use exactly the Sub-Headers provided below (H3 ###) for specific sections. H3 headers must use ### at the start and be bold.
+    4.  Use exactly the Sub-Headers provided below (H3 ###) for specific sections. H3 headers MUST use ### at the start AND be bold using **bold** markdown (e.g., ### **Section Title**).
     5.  Use double line breaks (two newlines) between ALL paragraphs, list items, and below H3s for readability.
     6.  Keep paragraphs short (max 3 sentences). Each paragraph should be on its own line(s).
     7.  All paragraphs should use normal text formatting (not bold unless emphasizing specific words with **bold**).
     8.  For the Executive Dashboard Table, you MUST use standard Markdown syntax (using pipes |). DO NOT use HTML tags like <table>.
     9.  H2 headers (##) should be used sparingly and only when needed for major subsections. They should be bold.
     10. Ensure all text flows naturally and is properly formatted with correct spacing.
+    11. NEVER output raw, unformatted text. ALL content must be properly structured with headers, paragraphs, lists, or tables.
+    12. NEVER leave sections empty or blank. Every section must have substantial, formatted content.
+    13. If a section has no content, omit it entirely rather than leaving it empty.
+    14. Ensure proper spacing: one blank line between sections, two blank lines after H1 headers, one blank line after H3 headers.
+    15. All H3 headers must be formatted as: ### **Header Text** (with both ### and **bold**).
+    16. CRITICAL: Before finalizing the report, review ALL text for spelling, grammar, syntax, and readability. Ensure professional, polished language throughout.
 
     REQUIRED OUTPUT STRUCTURE (Markdown):
 

@@ -358,13 +358,13 @@ const SetupForm: React.FC<SetupFormProps> = ({ onSubmit, isSubmitting, initialDa
             <textarea
               ref={feedbackItemSpellCheck.inputRef as React.RefObject<HTMLTextAreaElement>}
               name="feedbackItem"
-              placeholder="The more detail the better: Paste a website URL, give a product description for full review & feedback, test marketing messaging or even an email or ad, or ask a specific question here..."
+              placeholder="Think of this as your prompt. The more detail the better: Paste a website URL, give a product description for full review & feedback, test marketing messaging or even an email or ad, or ask a specific question here..."
               value={formData['feedbackItem']}
               onChange={handleChange}
               onBlur={handleBlur}
               onContextMenu={feedbackItemSpellCheck.handleContextMenu}
               spellCheck={false}
-              className={`w-full h-32 bg-[#F9FAFD] dark:bg-[#0a0e1a] border rounded-lg px-4 py-3 text-[#221E1F] dark:text-[#f3f4f6] focus:outline-none focus:ring-2 transition-all resize-none placeholder-[#595657] dark:placeholder-[#9ca3af] ${
+              className={`w-full h-32 bg-[#F9FAFD] dark:bg-[#0a0e1a] border rounded-lg px-4 py-3 text-[#221E1F] dark:text-[#f3f4f6] focus:outline-none focus:ring-2 transition-all resize-none placeholder:text-xs placeholder-[#595657] dark:placeholder-[#9ca3af] ${
                 errors['feedbackItem'] 
                   ? 'border-red-300 dark:border-red-600 focus:ring-red-500 focus:border-red-500' 
                   : 'border-[#EEF2FF] dark:border-[#374151] focus:ring-[#577AFF] focus:border-transparent'

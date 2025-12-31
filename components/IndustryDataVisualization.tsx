@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, DollarSign, BarChart3, PieChart, Activity } from 'lucide-react';
 import { UserInput } from '../types';
 import { fetchDashboardData, DashboardData } from '../services/dashboardDataService';
-import IndustryVisualizations from './IndustryVisualizations';
 
 interface IndustryDataVisualizationProps {
   userInput: UserInput | null;
@@ -12,8 +11,6 @@ interface IndustryDataVisualizationProps {
 
 const IndustryDataVisualization: React.FC<IndustryDataVisualizationProps> = ({ userInput, onDataLoaded, autoFetch = false }) => {
   if (!userInput) return null;
-
-  const industry = userInput.industry || 'Industry';
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false); // Start as false, only set to true when explicitly fetching
@@ -367,27 +364,6 @@ const IndustryDataVisualization: React.FC<IndustryDataVisualizationProps> = ({ u
           <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Industry Lifecycle</p>
         </div>
       </div>
-
-      <IndustryVisualizations 
-        dashboardData={dashboardData}
-        isLoading={isLoading}
-        fallbackData={{
-          marketSize: 0,
-          growthRate: 0,
-          avgDealSize: 0,
-          marketMaturity: 'Growing' as const,
-          revenueDistribution: [],
-          companySizeDistribution: [],
-          industryInsights: { trends: [], dynamics: [], quotes: [] },
-          keyPlayers: [],
-          technologyAdoption: [],
-          geographicDistribution: [],
-          buyingCycleStages: [],
-          painPoints: [],
-          investmentTrends: []
-        }}
-      />
-
     </div>
   );
 };

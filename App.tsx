@@ -7,7 +7,7 @@ import { performQualityControl } from './services/qualityControlService';
 import { reportError, getOrCreateSessionId } from './services/errorReportingService';
 import { normalizePersonaBreakdowns, normalizeICPProfile } from './services/dataNormalizer';
 import { getSessions, saveSession, deleteSession, migrateLocalStorageSessions } from './services/sessionService';
-import { saveDraftSession, getLatestDraftSession, markSessionComplete, DraftSessionData } from './services/draftSessionService';
+import { saveDraftSession, getLatestDraftSession, markSessionComplete, deleteDraftSession, DraftSessionData } from './services/draftSessionService';
 import { signOut, getCurrentUser } from './services/authService';
 import { supabase } from './services/supabaseClient';
 import { getSubscriptionStatus, incrementReportsUsed, SubscriptionStatus } from './services/subscriptionService';
@@ -100,14 +100,20 @@ const generateReportTitle = (feedbackItem: string, feedbackType?: string): strin
     };
     
     if (typeMap[feedbackType]) {
-      return `${typeMap[feedbackType]} Board Report`;
+      const title = `${typeMap[feedbackType]} Board Report`;
+      // Prevent double "Website" - if primaryIntent is "Website" and title already contains "Website", don't add it again
+      if (primaryIntent === 'Website' && title.includes('Website')) {
+        return title; // Already has Website, return as-is
+      }
+      return title;
     }
   }
   
   // Build a 3-6 word summary
   let summaryWords: string[] = [];
   
-  if (primaryIntent) {
+  // Prevent double "Website" - if primaryIntent is "Website" and feedbackType already contains "Website", skip primaryIntent
+  if (primaryIntent && !(primaryIntent === 'Website' && feedbackType?.toLowerCase().includes('website'))) {
     summaryWords.push(primaryIntent);
   }
   
@@ -728,11 +734,28 @@ const App: React.FC = () => {
     // Set start time
     analysisStartTimeRef.current = Date.now();
     
-    // Set timeout to force complete after 5 minutes
+    // Set timeout to force complete after 3 minutes (reduced from 5 minutes)
     analysisTimeoutRef.current = setTimeout(() => {
       console.warn('⚠️ Report generation timeout - forcing completion');
       handleForceComplete();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 3 * 60 * 1000); // 3 minutes
+    
+    // Check for stuck reports after 2 minutes - show recovery options
+    setTimeout(async () => {
+      // Check if still analyzing and no report content
+      if (appState === AppState.ANALYZING && (!report || report.trim().length === 0)) {
+        try {
+          const { session } = await getLatestDraftSession();
+          if (session && session.appState === AppState.ANALYZING) {
+            // Show recovery modal for stuck report
+            setDraftSessionToRecover(session);
+            setShowDraftRecoveryModal(true);
+          }
+        } catch (err) {
+          console.error('Error checking for stuck report:', err);
+        }
+      }
+    }, 2 * 60 * 1000); // 2 minutes
     
     // Save draft session before starting analysis
     saveDraftSession({
@@ -1732,7 +1755,7 @@ const App: React.FC = () => {
       {showDraftRecoveryModal && draftSessionToRecover && (
         <DraftRecoveryModal
           sessionTitle={draftSessionToRecover.input?.feedbackItem 
-            ? generateReportTitle(draftSessionToRecover.input.feedbackType || '', draftSessionToRecover.input.feedbackItem)
+            ? generateReportTitle(draftSessionToRecover.input.feedbackItem, draftSessionToRecover.input.feedbackType)
             : undefined
           }
           onContinue={() => {
@@ -1770,6 +1793,30 @@ const App: React.FC = () => {
           onDismiss={() => {
             setShowDraftRecoveryModal(false);
             setDraftSessionToRecover(null);
+          }}
+          onDelete={async () => {
+            const session = draftSessionToRecover;
+            if (session?.id) {
+              // Delete the draft session
+              await deleteDraftSession(session.id);
+              
+              // If we have user input, restore it and start fresh
+              if (session.input) {
+                setUserInput(session.input as UserInput);
+                // Reset other state to start fresh
+                setMembers([]);
+                setReport('');
+                setIcpProfile(undefined);
+                setPersonaBreakdowns(undefined);
+                setQcStatus(null);
+                setCompetitorAnalysis(null);
+                setCurrentSessionId(null);
+                setAppState(AppState.ICP_SETUP);
+              }
+              
+              setShowDraftRecoveryModal(false);
+              setDraftSessionToRecover(null);
+            }
           }}
         />
       )}

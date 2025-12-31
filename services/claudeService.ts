@@ -85,7 +85,7 @@ export const verifyResearchWithClaude = async (
     
     const timeoutMs = 30000; // 30 second timeout for verification
     
-    const verificationPrompt = `You are a fact-checker and research validation expert. Your task is to:
+    const verificationPrompt = `You are a fact-checker, research validation expert, and copy editor. Your task is to:
 
 1. VERIFY the veracity of the research data provided below
 2. CHECK for any hallucinations, false information, or random/incorrect data
@@ -94,6 +94,11 @@ export const verifyResearchWithClaude = async (
 5. ENSURE all statistics, facts, and claims are accurate and well-supported
 6. IDENTIFY any logical inconsistencies or potential biases
 7. ADD missing context or perspectives that would strengthen the analysis
+8. ENSURE proper formatting: H3 headers must be bold (### **Header**), proper spacing between sections, no raw unformatted text
+9. CRITICAL: Review ALL text for spelling, grammar, syntax, and readability. Correct any errors and ensure professional, polished language throughout
+10. ENSURE proper capitalization, punctuation, and sentence structure
+11. CHECK for typos, repeated words, and awkward phrasing
+12. VERIFY all technical terms and proper nouns are spelled correctly
 
 RESEARCH DATA FROM PERPLEXITY AI:
 ${researchData}
@@ -117,8 +122,28 @@ TASK:
 6. Check for logical consistency and identify any contradictions
 7. Identify potential biases or gaps in the research
 8. Ensure all data is current, accurate, and relevant to the context provided
+9. ENSURE proper formatting: H3 headers must be bold (### **Header**), proper spacing between sections, no raw unformatted text
+10. CRITICAL: Review ALL text for spelling, grammar, syntax, and readability. Correct any errors and ensure professional, polished language throughout
+11. ENSURE proper capitalization, punctuation, and sentence structure
+12. CHECK for typos, repeated words, and awkward phrasing
+13. VERIFY all technical terms and proper nouns are spelled correctly
 
-Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structure and organization of the original research, but ensure all content is accurate, verified, and enhanced with additional depth, breadth, and logical consistency.`;
+Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structure and organization of the original research, but ensure all content is accurate, verified, and enhanced with additional depth, breadth, and logical consistency.
+
+CRITICAL FORMATTING REQUIREMENTS:
+- All H3 headers must be formatted as: ### **Header Text** (with both ### and **bold**)
+- Use proper spacing: double line breaks between paragraphs, single line break after headers
+- Never output raw, unformatted text - always use proper markdown structure
+- Ensure all sections have substantial content - never leave sections empty or blank
+
+CRITICAL LANGUAGE QUALITY REQUIREMENTS:
+- Review and correct ALL spelling errors
+- Fix ALL grammar mistakes
+- Ensure proper syntax and sentence structure
+- Improve readability and flow
+- Verify technical terms and proper nouns are spelled correctly
+- Remove repeated words or phrases
+- Ensure professional, polished language throughout`;
 
     const timeoutPromise = new Promise<string>((_, reject) => {
       setTimeout(() => reject(new Error('Claude verification timeout')), timeoutMs);

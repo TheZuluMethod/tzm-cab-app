@@ -1,15 +1,17 @@
 import React from 'react';
-import { RotateCcw, X, ArrowRight, FileText } from 'lucide-react';
+import { RotateCcw, X, ArrowRight, FileText, Trash2 } from 'lucide-react';
 
 interface DraftRecoveryModalProps {
   onContinue: () => void;
   onDismiss: () => void;
+  onDelete?: () => void;
   sessionTitle?: string;
 }
 
 const DraftRecoveryModal: React.FC<DraftRecoveryModalProps> = ({
   onContinue,
   onDismiss,
+  onDelete,
   sessionTitle,
 }) => {
   return (
@@ -61,24 +63,40 @@ const DraftRecoveryModal: React.FC<DraftRecoveryModalProps> = ({
             <p className="text-xs text-[#595657] dark:text-[#9ca3af] leading-relaxed mt-2">
               <strong className="text-[#051A53] dark:text-[#f3f4f6]">Start Fresh:</strong> Begin a new session (your draft will remain saved).
             </p>
+            {onDelete && (
+              <p className="text-xs text-[#595657] dark:text-[#9ca3af] leading-relaxed mt-2">
+                <strong className="text-[#051A53] dark:text-[#f3f4f6]">Delete & Restart:</strong> Delete this draft and start over with the same user input.
+              </p>
+            )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-4 bg-[#F9FAFD] dark:bg-[#1a1f2e] border-t border-[#EEF2FF] dark:border-[#374151] flex gap-3">
-          <button
-            onClick={onDismiss}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-white dark:bg-[#111827] border border-[#D5DDFF] dark:border-[#374151] text-[#595657] dark:text-[#9ca3af] hover:bg-[#EEF2FF] dark:hover:bg-[#374151] transition-colors font-medium text-sm"
-          >
-            Start Fresh
-          </button>
-          <button
-            onClick={onContinue}
-            className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 text-white hover:from-blue-600 hover:to-purple-700 dark:hover:from-blue-700 dark:hover:to-purple-800 transition-all font-semibold text-sm shadow-lg dark:shadow-[0_0_20px_rgba(87,122,255,0.4)] flex items-center justify-center gap-2"
-          >
-            Continue Session
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="px-6 py-4 bg-[#F9FAFD] dark:bg-[#1a1f2e] border-t border-[#EEF2FF] dark:border-[#374151] flex flex-col gap-3">
+          <div className="flex gap-3">
+            <button
+              onClick={onDismiss}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-white dark:bg-[#111827] border border-[#D5DDFF] dark:border-[#374151] text-[#595657] dark:text-[#9ca3af] hover:bg-[#EEF2FF] dark:hover:bg-[#374151] transition-colors font-medium text-sm"
+            >
+              Start Fresh
+            </button>
+            <button
+              onClick={onContinue}
+              className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 text-white hover:from-blue-600 hover:to-purple-700 dark:hover:from-blue-700 dark:hover:to-purple-800 transition-all font-semibold text-sm shadow-lg dark:shadow-[0_0_20px_rgba(87,122,255,0.4)] flex items-center justify-center gap-2"
+            >
+              Continue Session
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="w-full px-4 py-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete & Restart with Same Input
+            </button>
+          )}
         </div>
       </div>
     </div>

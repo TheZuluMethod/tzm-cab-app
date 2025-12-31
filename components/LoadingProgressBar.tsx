@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserInput } from '../types';
 import { AlertCircle } from 'lucide-react';
+import IndustryDataVisualization from './IndustryDataVisualization';
 
 interface LoadingProgressBarProps {
   userInput: UserInput | null;
@@ -8,11 +9,12 @@ interface LoadingProgressBarProps {
   onForceComplete?: () => void;
 }
 
-const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ reportLength, onForceComplete }) => {
+const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ userInput, reportLength, onForceComplete }) => {
   const [progress, setProgress] = useState(0);
   const [showForceComplete, setShowForceComplete] = useState(false);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
-  // Simulate progress based on report length and time
+  // Simulate smooth progress based on report length and time
   useEffect(() => {
     // Estimate: typical report is ~5000-10000 characters
     // Use report length to estimate progress (0-80%)
@@ -22,25 +24,47 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ reportLength, o
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
+      const elapsedSeconds = Math.floor(elapsed / 1000);
       
-      // After 30 seconds, we're at ~20% time-based progress
-      const timeBasedProgress = Math.min((elapsed / 30000) * 20, 20);
+      // Smooth progress calculation
+      // After 60 seconds, we're at ~25% time-based progress
+      const timeBasedProgress = Math.min((elapsed / 60000) * 25, 25);
       
-      // Combine both (length-based is more accurate)
+      // Combine both (length-based is more accurate, but time provides smoothness)
       const totalProgress = Math.min(lengthBasedProgress + timeBasedProgress, 95);
-      const currentProgress = Math.floor(totalProgress);
-      setProgress(currentProgress);
       
-      // Show force complete button if:
-      // 1. Progress is at 95% and stuck for 30+ seconds, OR
-      // 2. More than 150 seconds (2.5 minutes) have elapsed (regardless of progress)
-      if ((currentProgress >= 95 && elapsed > 30000) || elapsed > 150000) {
+      // Smooth the progress updates (avoid choppy jumps)
+      setProgress(prev => {
+        const diff = totalProgress - prev;
+        // If difference is large, move gradually (smooth animation)
+        if (Math.abs(diff) > 2) {
+          return prev + (diff > 0 ? 1 : -1);
+        }
+        return Math.floor(totalProgress);
+      });
+      
+      // Estimate time remaining based on current progress
+      if (elapsedSeconds > 10 && progress > 5) {
+        // Estimate: if we're at X% after Y seconds, total time should be Y * (100/X)
+        const estimatedTotalSeconds = Math.floor((elapsedSeconds / progress) * 100);
+        const remaining = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
+        setEstimatedTimeRemaining(remaining);
+      }
+      
+      // Show force complete button after 2 minutes (120 seconds) - reduced from 4 minutes
+      if (elapsed > 120000) {
         setShowForceComplete(true);
       }
-    }, 500);
+      
+      // If stuck for more than 3 minutes, also check for draft recovery
+      if (elapsed > 180000 && reportLength === 0) {
+        // Report appears stuck - no content generated after 3 minutes
+        // This will trigger draft recovery check on next render
+      }
+    }, 200); // Update more frequently for smoother animation
 
     return () => clearInterval(interval);
-  }, [reportLength]);
+  }, [reportLength, progress]);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8 animate-in fade-in">
@@ -65,7 +89,14 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ reportLength, o
             </div>
             <div className="flex justify-between items-center text-xs text-[#595657] dark:text-[#9ca3af] max-w-md mx-auto mb-4">
               <span>Generating report...</span>
-              <span className="font-semibold text-[#577AFF] dark:text-[#A1B4FF]">{progress}%</span>
+              <div className="flex items-center gap-3">
+                {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
+                  <span className="text-[#595657] dark:text-[#9ca3af]">
+                    ~{Math.ceil(estimatedTimeRemaining / 60)} min remaining
+                  </span>
+                )}
+                <span className="font-semibold text-[#577AFF] dark:text-[#A1B4FF]">{progress}%</span>
+              </div>
             </div>
             
             {/* Force Complete Button - Show if stuck */}
@@ -86,7 +117,16 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ reportLength, o
           </div>
         </div>
       </div>
-      {/* Industry data visualization removed */}
+      
+      {/* Industry Info Cards */}
+      {userInput && (
+        <div className="mt-8">
+          <IndustryDataVisualization 
+            userInput={userInput} 
+            autoFetch={true}
+          />
+        </div>
+      )}
     </div>
   );
 };

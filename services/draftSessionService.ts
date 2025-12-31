@@ -131,7 +131,12 @@ export const saveDraftSession = async (
     }
 
     // Ensure session ID is a valid UUID
-    if (!finalSessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    if (!finalSessionId || !finalSessionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      finalSessionId = crypto.randomUUID();
+    }
+    
+    // Ensure finalSessionId is defined
+    if (!finalSessionId) {
       finalSessionId = crypto.randomUUID();
     }
 
@@ -276,6 +281,9 @@ export const getLatestDraftSession = async (): Promise<{ session: DraftSessionDa
         return { session: null };
       }
       const latestKey = keys.sort().reverse()[0];
+      if (!latestKey) {
+        return { session: null };
+      }
       const draftData = JSON.parse(localStorage.getItem(latestKey) || '{}');
       return { session: draftData };
     } catch (error: any) {
@@ -370,3 +378,43 @@ export const markSessionComplete = async (sessionId: string): Promise<{ success:
   }
 };
 
+/**
+ * Delete a draft session
+ */
+export const deleteDraftSession = async (sessionId: string): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) {
+    // Fallback to localStorage
+    try {
+      localStorage.removeItem(`zulu_draft_${sessionId}`);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  try {
+    const { data: { user } } = await supabase!.auth.getUser();
+    
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { error } = await supabase!
+      .from('sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .eq('status', 'draft'); // Only delete draft sessions for safety
+
+    if (error) {
+      console.error('Error deleting draft session:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error deleting draft session:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
