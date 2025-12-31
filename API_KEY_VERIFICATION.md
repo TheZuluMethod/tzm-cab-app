@@ -2,7 +2,7 @@
 
 ## Your Current Setup
 
-✅ **API Key Found**: `AIzaSyCG_XbSZbIg9tyXi9PxA4aJOAULmjq1VU0`  
+✅ **API Key Found**: `your_gemini_api_key_here`  
 ✅ **Project**: TZM AI Customer Advisory Board (tzm-ai-customer-advisory-board)
 
 ## How to Verify Your API Key is Correct
@@ -11,7 +11,7 @@
 
 1. Go to: https://console.cloud.google.com/apis/credentials
 2. Select your project: **TZM AI Customer Advisory Board**
-3. Find your API key: `AIzaSyCG_XbSZbIg9tyXi9PxA4aJOAULmjq1VU0`
+3. Find your API key: `your_gemini_api_key_here`
 4. Verify:
    - ✅ **API restrictions**: Should include "Generative Language API" (Gemini API)
    - ✅ **Application restrictions**: Set appropriately (None, HTTP referrers, or IP addresses)
@@ -38,7 +38,7 @@
    - If you see errors, check the detailed error object
 
 3. **Check the terminal** when starting the server:
-   - Should see: `[Vite Config] GEMINI_API_KEY found: AIzaSyCG_X... (placeholder: false)`
+   - Should see: `[Vite Config] GEMINI_API_KEY found: your_api_key... (placeholder: false)`
 
 ## Common Issues
 

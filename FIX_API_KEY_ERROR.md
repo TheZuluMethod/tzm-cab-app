@@ -27,7 +27,7 @@ This is a **placeholder**, not a real API key.
    ```
 3. Replace `your_gemini_api_key_here` with your actual API key:
    ```
-   GEMINI_API_KEY=AIzaSyAbCdEfGhIjKlMnOpQrStUvWxYz1234567
+   GEMINI_API_KEY=your_actual_api_key_here
    ```
 4. **Important:** 
    - No spaces around the `=`

@@ -4,7 +4,7 @@
 
 Your `.env` file contains:
 ```
-GEMINI_API_KEY=AIzaSyCG_XbSZbIg9tyXi9PxA4aJOAULmjq1VU0
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ## How It Works
