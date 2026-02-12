@@ -342,7 +342,7 @@ Extract only verified, accurate data from this verified research.
 
 Extract the following data and return as JSON:
 
-1. Market Size: Total Addressable Market (TAM) in billions (e.g., 50 for $50B). If not found, estimate based on industry.
+1. Market Size: Total Addressable Market (TAM) in billions (e.g., 50 for $50B, 250 for $250B, NOT 2500 for $250B). CRITICAL: The number should represent billions directly - if the market is $250 billion, return 250, NOT 2500. If not found, estimate based on industry.
 2. Growth Rate: Annual growth rate percentage (e.g., 3.1 for 3.1%). If not found, estimate based on industry.
 3. Avg Deal Size: Average contract/deal size in thousands (e.g., 150 for $150K). If not found, estimate based on industry.
 4. Market Maturity: One of: "Emerging", "Growing", "Mature", or "Declining"

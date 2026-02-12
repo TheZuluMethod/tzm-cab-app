@@ -217,40 +217,9 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onClose }) => {
             />
           </div>
 
-          {/* Referral Program Metrics */}
+          {/* Referral Program Charts */}
           {analytics.referralMetrics && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
-                  icon={<Gift className="w-5 h-5" />}
-                  title="Total Referrals"
-                  value={analytics.referralMetrics.totalReferrals}
-                  subtitle={`${analytics.referralMetrics.totalReferrers} referrers`}
-                  color={colors.primary}
-                />
-                <MetricCard
-                  icon={<UserPlus className="w-5 h-5" />}
-                  title="Conversions"
-                  value={analytics.referralMetrics.convertedReferrals}
-                  subtitle={`${analytics.referralMetrics.conversionRate}% conversion rate`}
-                  color={colors.success}
-                />
-                <MetricCard
-                  icon={<TrendingUp className="w-5 h-5" />}
-                  title="Sign Ups"
-                  value={analytics.referralMetrics.signedUpReferrals}
-                  subtitle={`${analytics.referralMetrics.signUpRate}% sign up rate`}
-                  color={colors.info}
-                />
-                <MetricCard
-                  icon={<Award className="w-5 h-5" />}
-                  title="Credits Applied"
-                  value={analytics.referralMetrics.creditsApplied}
-                  subtitle="Free months awarded"
-                  color={colors.warning}
-                />
-              </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Referral Status Breakdown */}
                 {analytics.referralMetrics.referralStatusBreakdown.length > 0 && (
@@ -713,6 +682,40 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ onClose }) => {
                 ))}
               </div>
             </ChartCard>
+          )}
+
+          {/* Referral Program Metrics - Moved to bottom */}
+          {analytics.referralMetrics && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                icon={<Gift className="w-5 h-5" />}
+                title="Total Referrals"
+                value={analytics.referralMetrics.totalReferrals}
+                subtitle={`${analytics.referralMetrics.totalReferrers} referrers`}
+                color={colors.primary}
+              />
+              <MetricCard
+                icon={<UserPlus className="w-5 h-5" />}
+                title="Conversions"
+                value={analytics.referralMetrics.convertedReferrals}
+                subtitle={`${analytics.referralMetrics.conversionRate}% conversion rate`}
+                color={colors.success}
+              />
+              <MetricCard
+                icon={<TrendingUp className="w-5 h-5" />}
+                title="Sign Ups"
+                value={analytics.referralMetrics.signedUpReferrals}
+                subtitle={`${analytics.referralMetrics.signUpRate}% sign up rate`}
+                color={colors.info}
+              />
+              <MetricCard
+                icon={<Award className="w-5 h-5" />}
+                title="Credits Applied"
+                value={analytics.referralMetrics.creditsApplied}
+                subtitle="Free months awarded"
+                color={colors.warning}
+              />
+            </div>
           )}
         </div>
       </div>

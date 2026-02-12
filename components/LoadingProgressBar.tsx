@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserInput } from '../types';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Lightbulb } from 'lucide-react';
 import IndustryDataVisualization from './IndustryDataVisualization';
 
 interface LoadingProgressBarProps {
@@ -13,58 +13,90 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ userInput, repo
   const [progress, setProgress] = useState(0);
   const [showForceComplete, setShowForceComplete] = useState(false);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
   // Simulate smooth progress based on report length and time
   useEffect(() => {
-    // Estimate: typical report is ~5000-10000 characters
-    // Use report length to estimate progress (0-80%)
-    const lengthBasedProgress = Math.min((reportLength / 10000) * 80, 80);
+    // Estimate: typical report is ~8000-15000 characters
+    // Use report length to estimate progress (0-85%)
+    const lengthBasedProgress = Math.min((reportLength / 15000) * 85, 85);
     
     // Also simulate time-based progress (slowly increases)
     const startTime = Date.now();
+    let lastProgress = 0;
+    
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const elapsedSeconds = Math.floor(elapsed / 1000);
       
-      // Smooth progress calculation
-      // After 60 seconds, we're at ~25% time-based progress
-      const timeBasedProgress = Math.min((elapsed / 60000) * 25, 25);
+      // More aggressive time-based progress for smoother experience
+      // After 30 seconds, we're at ~15% time-based progress
+      // After 60 seconds, we're at ~30% time-based progress
+      const timeBasedProgress = Math.min((elapsed / 60000) * 30, 30);
       
       // Combine both (length-based is more accurate, but time provides smoothness)
       const totalProgress = Math.min(lengthBasedProgress + timeBasedProgress, 95);
       
-      // Smooth the progress updates (avoid choppy jumps)
+      // Smooth the progress updates using requestAnimationFrame-like smoothing
       setProgress(prev => {
-        const diff = totalProgress - prev;
-        // If difference is large, move gradually (smooth animation)
-        if (Math.abs(diff) > 2) {
-          return prev + (diff > 0 ? 1 : -1);
+        const targetProgress = Math.floor(totalProgress);
+        const diff = targetProgress - prev;
+        
+        // Smooth interpolation - move gradually towards target
+        if (Math.abs(diff) > 0.5) {
+          // Move 10% of the difference each update for smooth animation
+          const step = diff * 0.1;
+          return Math.min(prev + step, targetProgress);
         }
-        return Math.floor(totalProgress);
+        return targetProgress;
       });
       
-      // Estimate time remaining based on current progress
-      if (elapsedSeconds > 10 && progress > 5) {
-        // Estimate: if we're at X% after Y seconds, total time should be Y * (100/X)
-        const estimatedTotalSeconds = Math.floor((elapsedSeconds / progress) * 100);
-        const remaining = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
-        setEstimatedTimeRemaining(remaining);
+      // Better time estimation - use both length and time
+      if (elapsedSeconds > 5) {
+        // Calculate estimated total time based on current progress rate
+        const currentProgress = Math.min(lengthBasedProgress + timeBasedProgress, 95);
+        
+        if (currentProgress > 5) {
+          // Estimate total time: elapsed * (100 / currentProgress)
+          const estimatedTotalSeconds = Math.max(60, Math.floor((elapsedSeconds / currentProgress) * 100));
+          const remaining = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
+          setEstimatedTimeRemaining(remaining);
+          
+          // Set countdown timer
+          if (remaining > 0 && remaining <= 300) { // Show countdown for last 5 minutes
+            setCountdownSeconds(remaining);
+          } else {
+            setCountdownSeconds(null);
+          }
+        }
       }
       
-      // Show force complete button after 2 minutes (120 seconds) - reduced from 4 minutes
-      if (elapsed > 120000) {
+      // Show force complete button after 3 minutes (180 seconds)
+      if (elapsed > 180000) {
         setShowForceComplete(true);
       }
       
-      // If stuck for more than 3 minutes, also check for draft recovery
-      if (elapsed > 180000 && reportLength === 0) {
-        // Report appears stuck - no content generated after 3 minutes
-        // This will trigger draft recovery check on next render
+      // If stuck for more than 4 minutes, also check for draft recovery
+      if (elapsed > 240000 && reportLength === 0) {
+        // Report appears stuck - no content generated after 4 minutes
       }
-    }, 200); // Update more frequently for smoother animation
+      
+      lastProgress = totalProgress;
+    }, 100); // Update more frequently for smoother animation
 
-    return () => clearInterval(interval);
-  }, [reportLength, progress]);
+    // Separate interval for countdown timer
+    const countdownInterval = setInterval(() => {
+      setCountdownSeconds(prev => {
+        if (prev === null || prev <= 0) return null;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(countdownInterval);
+    };
+  }, [reportLength]);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-8 animate-in fade-in">
@@ -79,23 +111,27 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ userInput, repo
             {/* Progress Bar - Tighter horizontally */}
             <div className="w-full max-w-md mx-auto bg-[#EEF2FF] dark:bg-[#374151] rounded-full h-4 md:h-6 mb-2 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-[#577AFF] to-[#4CAF50] rounded-full transition-all duration-500 ease-out flex items-center justify-end pr-2"
-                style={{ width: `${progress}%` }}
+                className="h-full bg-gradient-to-r from-[#577AFF] to-[#4CAF50] rounded-full transition-all duration-300 ease-linear flex items-center justify-end pr-2"
+                style={{ width: `${Math.min(progress, 100)}%` }}
               >
                 {progress > 10 && (
-                  <span className="text-xs font-bold text-white">{progress}%</span>
+                  <span className="text-xs font-bold text-white">{Math.round(progress)}%</span>
                 )}
               </div>
             </div>
             <div className="flex justify-between items-center text-xs text-[#595657] dark:text-[#9ca3af] max-w-md mx-auto mb-4">
               <span>Generating report...</span>
               <div className="flex items-center gap-3">
-                {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
+                {countdownSeconds !== null && countdownSeconds > 0 ? (
+                  <span className="font-semibold text-[#577AFF] dark:text-[#A1B4FF]">
+                    {Math.floor(countdownSeconds / 60)}:{(countdownSeconds % 60).toString().padStart(2, '0')}
+                  </span>
+                ) : estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 ? (
                   <span className="text-[#595657] dark:text-[#9ca3af]">
                     ~{Math.ceil(estimatedTimeRemaining / 60)} min remaining
                   </span>
-                )}
-                <span className="font-semibold text-[#577AFF] dark:text-[#A1B4FF]">{progress}%</span>
+                ) : null}
+                <span className="font-semibold text-[#577AFF] dark:text-[#A1B4FF]">{Math.round(progress)}%</span>
               </div>
             </div>
             
@@ -115,6 +151,14 @@ const LoadingProgressBar: React.FC<LoadingProgressBarProps> = ({ userInput, repo
               </div>
             )}
           </div>
+        </div>
+        
+        {/* Tip - Below dialog with lightbulb icon */}
+        <div className="flex items-start gap-2 max-w-2xl mx-auto mt-4 p-4 bg-[#EEF2FF] dark:bg-[#1a1f2e] rounded-lg border border-[#D5DDFF] dark:border-[#374151]">
+          <Lightbulb className="w-5 h-5 text-[#577AFF] dark:text-[#93C5FD] flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-[#595657] dark:text-[#9ca3af]">
+            Your report can take up to 5 minutes to complete. We're generating deep board feedback.
+          </p>
         </div>
       </div>
       

@@ -44,6 +44,167 @@ class SafeMarkdownErrorBoundary extends Component<
 }
 
 /**
+ * Pre-process markdown content to fix formatting issues
+ * Only fixes critical issues without breaking valid markdown
+ */
+const preprocessMarkdown = (content: string): string => {
+  let processed = content;
+  
+  // 1. Fix inline bullets in paragraphs - ensure each bullet is on its own line
+  // Pattern: "Text. • Item 1 • Item 2" -> "Text.\n\n• Item 1\n• Item 2"
+  // Only do this if bullets appear after sentence endings within a paragraph
+  processed = processed.replace(/([.!?])\s+([•*-])\s+([^\n]+?)(?=\s+[•*-]|\s+\d+\.|$)/g, (match, punct, bullet, text) => {
+    // Check if this is already on its own line (has newline before)
+    const beforeMatch = processed.substring(Math.max(0, processed.indexOf(match) - 10), processed.indexOf(match));
+    if (beforeMatch.includes('\n')) {
+      return match; // Already on its own line
+    }
+    return `${punct}\n\n${bullet} ${text}`;
+  });
+  
+  // 2. Fix inline numbered lists in paragraphs
+  processed = processed.replace(/([.!?])\s+(\d+\.)\s+([^\n]+?)(?=\s+\d+\.|$)/g, (match, punct, number, text) => {
+    const beforeMatch = processed.substring(Math.max(0, processed.indexOf(match) - 10), processed.indexOf(match));
+    if (beforeMatch.includes('\n')) {
+      return match;
+    }
+    return `${punct}\n\n${number} ${text}`;
+  });
+  
+  // 3. Ensure bullets at start of lines have proper spacing (but don't break existing lists)
+  // Only add spacing if there's no blank line before
+  processed = processed.replace(/([^\n])\n([•*-])\s/g, '$1\n\n$2 ');
+  
+  // 4. Ensure numbered lists at start of lines have proper spacing
+  processed = processed.replace(/([^\n])\n(\d+\.)\s/g, '$1\n\n$2 ');
+  
+  return processed;
+};
+
+/**
+ * Format list item to bold the first few words
+ * Handles both string content and React elements
+ */
+const formatListItem = (item: string | ReactNode): ReactNode => {
+  // If it's already a React element, check if it needs formatting
+  if (typeof item !== 'string') {
+    // If it's already formatted (contains strong tags), return as-is
+    return item;
+  }
+  
+  // Remove leading bullet/number if present
+  const cleaned = item.replace(/^[•*-]\s+/, '').replace(/^\d+\.\s+/, '').trim();
+  
+  // Check if item already has bold markdown formatting
+  if (cleaned.includes('**') && cleaned.match(/\*\*[^*]+\*\*/)) {
+    // Already has bold formatting, return as-is (will be processed by markdown parser)
+    return <>{cleaned}</>;
+  }
+  
+  // Split into words
+  const words = cleaned.split(/\s+/);
+  
+  // Bold first 3-5 words if they form a meaningful phrase (up to 30 chars)
+  if (words.length >= 3) {
+    let boldLength = 0;
+    let boldWords: string[] = [];
+    
+    for (let i = 0; i < Math.min(words.length, 5); i++) {
+      const testPhrase = boldWords.concat(words[i]).join(' ');
+      if (testPhrase.length <= 30) {
+        boldWords.push(words[i]);
+        boldLength = testPhrase.length;
+      } else {
+        break;
+      }
+    }
+    
+    if (boldWords.length >= 2 && boldLength > 0) {
+      const boldText = boldWords.join(' ');
+      const restText = words.slice(boldWords.length).join(' ');
+      return (
+        <>
+          <strong className="font-bold text-[#221E1F] dark:text-[#f3f4f6]">{boldText}</strong>
+          {restText && ` ${restText}`}
+        </>
+      );
+    }
+  }
+  
+  return <>{cleaned}</>;
+};
+
+/**
+ * Process table cell content - handle lists, bold text, and line breaks
+ */
+const processTableCellContent = (content: string): ReactNode => {
+  if (!content || typeof content !== 'string') return null;
+  
+  // Check if content contains bullet points or numbered lists
+  const hasBullets = /^[•*-]\s+/m.test(content) || /\n[•*-]\s+/m.test(content);
+  const hasNumbers = /^\d+\.\s+/m.test(content) || /\n\d+\.\s+/m.test(content);
+  
+  if (hasBullets || hasNumbers) {
+    // Split into list items
+    const items = content.split(/\n(?=[•*-]\s+|\d+\.\s+)/).filter(item => item.trim());
+    
+    if (items.length > 0) {
+      const isNumbered = /^\d+\.\s+/.test(items[0]);
+      
+      if (isNumbered) {
+        return (
+          <ol className="list-decimal space-y-2 my-2 text-[#595657] dark:text-[#9ca3af] pl-5">
+            {items.map((item, idx) => (
+              <li key={idx} className="mb-2 leading-relaxed block">
+                {formatListItem(item)}
+              </li>
+            ))}
+          </ol>
+        );
+      } else {
+        return (
+          <ul className="list-disc space-y-2 my-2 text-[#595657] dark:text-[#9ca3af] pl-5">
+            {items.map((item, idx) => (
+              <li key={idx} className="mb-2 leading-relaxed block">
+                {formatListItem(item)}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+    }
+  }
+  
+  // Handle line breaks
+  if (content.includes('<br>') || content.includes('<br />')) {
+    return (
+      <>
+        {content.split(/<br\s*\/?>/).map((part, idx, arr) => (
+          <React.Fragment key={idx}>
+            {part || ''}
+            {idx < arr.length - 1 && <br />}
+          </React.Fragment>
+        ))}
+      </>
+    );
+  }
+  
+  // Handle bold text - if entire cell is bold, remove excessive bold
+  // But preserve intentional bold formatting
+  const boldMatches = content.match(/\*\*(.+?)\*\*/g);
+  if (boldMatches && boldMatches.length > 0) {
+    // If more than 50% of content is bold, it's likely over-bolded
+    const boldLength = boldMatches.reduce((sum, match) => sum + match.length, 0);
+    if (boldLength > content.length * 0.5) {
+      // Remove excessive bold, keep only strategic bold
+      return <>{content.replace(/\*\*/g, '')}</>;
+    }
+  }
+  
+  return <>{content}</>;
+};
+
+/**
  * Safe wrapper around ReactMarkdown that catches any rendering errors
  * and displays a fallback instead of crashing the app
  */
@@ -79,6 +240,9 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
     if (!sanitizedContent || sanitizedContent.trim().length === 0) {
       return <div className="text-[#595657] dark:text-[#9ca3af]">No content to display</div>;
     }
+    
+    // Pre-process content to fix formatting issues
+    sanitizedContent = preprocessMarkdown(sanitizedContent);
     
     // Wrap ReactMarkdown in Error Boundary (React errors can't be caught with try-catch)
     return (
@@ -212,7 +376,35 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
                 content = '';
               }
               
-              if (content && (content.includes('<br>') || content.includes('<br />'))) {
+              // Don't process if content is empty or just whitespace
+              if (!content || content.trim().length === 0) {
+                return null;
+              }
+              
+              // Break up very long paragraphs (more than 4 sentences) into smaller ones
+              // Only do this if the paragraph is extremely long (safety check)
+              const sentences = content.match(/[^.!?]+[.!?]+/g) || [];
+              if (sentences.length > 4 && content.length > 300) {
+                // Break into smaller paragraphs of 3-4 sentences each
+                const paragraphs: string[] = [];
+                for (let i = 0; i < sentences.length; i += 3) {
+                  const paragraphSentences = sentences.slice(i, i + 3);
+                  paragraphs.push(paragraphSentences.join(' ').trim());
+                }
+                
+                return (
+                  <>
+                    {paragraphs.map((para, idx) => (
+                      <p key={idx} className="text-[#595657] dark:text-[#9ca3af] leading-relaxed my-4" {...props}>
+                        {para}
+                      </p>
+                    ))}
+                  </>
+                );
+              }
+              
+              // Handle <br> tags
+              if (content.includes('<br>') || content.includes('<br />')) {
                 return (
                   <p className="text-[#595657] dark:text-[#9ca3af] leading-relaxed my-4" {...props}>
                     {content.split(/<br\s*\/?>/).map((part, idx, arr) => (
@@ -224,6 +416,7 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
                   </p>
                 );
               }
+              
               return <p className="text-[#595657] dark:text-[#9ca3af] leading-relaxed my-4" {...props}>{children || ''}</p>;
             } catch (e) {
               console.error('Error rendering paragraph:', e);
@@ -232,23 +425,72 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
           },
           ul: ({node, children, ...props}: any) => {
             try {
-              return <ul className="list-disc space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6" {...props}>{children}</ul>;
+              // Ensure each bullet is on its own line with proper spacing
+              return <ul className="list-disc space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6 [&>li]:block [&>li]:mb-3" {...props}>{children}</ul>;
             } catch (e) {
-              return <ul className="list-disc space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6">{children}</ul>;
+              return <ul className="list-disc space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6 [&>li]:block [&>li]:mb-3">{children}</ul>;
             }
           },
           ol: ({node, children, ...props}: any) => {
             try {
-              return <ol className="list-decimal space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6" {...props}>{children}</ol>;
+              return <ol className="list-decimal space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6 [&>li]:block [&>li]:mb-3" {...props}>{children}</ol>;
             } catch (e) {
-              return <ol className="list-decimal space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6">{children}</ol>;
+              return <ol className="list-decimal space-y-3 my-6 text-[#595657] dark:text-[#9ca3af] pl-6 [&>li]:block [&>li]:mb-3">{children}</ol>;
             }
           },
           li: ({node, children, ...props}: any) => {
             try {
-              return <li className="mb-3 leading-relaxed text-[#595657] dark:text-[#9ca3af]" {...props}>{children}</li>;
+              // Safely extract content from children
+              let itemContent: string | ReactNode = '';
+              let hasReactElements = false;
+              
+              try {
+                if (typeof children === 'string') {
+                  itemContent = children;
+                } else if (Array.isArray(children)) {
+                  // Check if any children are React elements
+                  hasReactElements = children.some((child: any) => 
+                    typeof child === 'object' && child !== null && !Array.isArray(child)
+                  );
+                  
+                  if (hasReactElements) {
+                    // Contains React elements, pass through as-is but ensure formatting
+                    itemContent = children;
+                  } else {
+                    // All strings, join them
+                    itemContent = children.map((child: any) => {
+                      if (typeof child === 'string') return child;
+                      return String(child || '');
+                    }).join('');
+                  }
+                } else if (children && typeof children === 'object') {
+                  // React element, pass through
+                  hasReactElements = true;
+                  itemContent = children;
+                } else {
+                  itemContent = String(children || '');
+                }
+              } catch (contentError) {
+                itemContent = children || '';
+              }
+              
+              // Format list item with bold beginning (only if it's a string)
+              if (!hasReactElements && typeof itemContent === 'string') {
+                return (
+                  <li className="mb-3 leading-relaxed text-[#595657] dark:text-[#9ca3af] block" {...props}>
+                    {formatListItem(itemContent)}
+                  </li>
+                );
+              }
+              
+              // If it's already React elements, render as-is
+              return (
+                <li className="mb-3 leading-relaxed text-[#595657] dark:text-[#9ca3af] block" {...props}>
+                  {children}
+                </li>
+              );
             } catch (e) {
-              return <li className="mb-3 leading-relaxed text-[#595657] dark:text-[#9ca3af]">{children}</li>;
+              return <li className="mb-3 leading-relaxed text-[#595657] dark:text-[#9ca3af] block">{children}</li>;
             }
           },
           strong: ({node, children, ...props}: any) => {
@@ -385,9 +627,9 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
           },
           th: ({node, children, ...props}: any) => {
             try {
-              return <th className="p-4 bg-[#EEF2FF] dark:bg-[#1a1f2e] text-[#051A53] dark:text-[#93C5FD] text-left font-bold border border-[#D5DDFF] dark:border-[#374151]" {...props}>{children}</th>;
+              return <th className="p-4 bg-[#EEF2FF] dark:bg-[#1a1f2e] text-[#051A53] dark:text-[#93C5FD] text-left font-bold border border-[#D5DDFF] dark:border-[#374151] break-words" style={{ wordWrap: 'break-word', overflowWrap: 'anywhere' }} {...props}>{children}</th>;
             } catch (e) {
-              return <th className="p-4 bg-[#EEF2FF] dark:bg-[#1a1f2e] text-[#051A53] dark:text-[#93C5FD] text-left font-bold border border-[#D5DDFF] dark:border-[#374151] break-words overflow-wrap-anywhere word-wrap-break-word max-w-0" style={{ wordWrap: 'break-word', overflowWrap: 'anywhere', wordBreak: 'break-word', maxWidth: 0 }}>{children}</th>;
+              return <th className="p-4 bg-[#EEF2FF] dark:bg-[#1a1f2e] text-[#051A53] dark:text-[#93C5FD] text-left font-bold border border-[#D5DDFF] dark:border-[#374151] break-words" style={{ wordWrap: 'break-word', overflowWrap: 'anywhere' }}>{children}</th>;
             }
           },
           td: ({node, children, ...props}: any) => {
@@ -419,19 +661,14 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
                 content = '';
               }
               
-              if (content && (content.includes('<br>') || content.includes('<br />'))) {
-                return (
-                  <td className="p-4 border border-[#EEF2FF] dark:border-[#374151] align-top text-[#595657] dark:text-[#9ca3af] bg-white dark:bg-[#111827]" {...props}>
-                    {content.split(/<br\s*\/?>/).map((part, idx, arr) => (
-                      <React.Fragment key={idx}>
-                        {part || ''}
-                        {idx < arr.length - 1 && <br />}
-                      </React.Fragment>
-                    ))}
-                  </td>
-                );
-              }
-              return <td className="p-4 border border-[#EEF2FF] dark:border-[#374151] align-top text-[#595657] dark:text-[#9ca3af] bg-white dark:bg-[#111827] break-words overflow-wrap-anywhere word-wrap-break-word max-w-0" style={{ wordWrap: 'break-word', overflowWrap: 'anywhere', wordBreak: 'break-word', maxWidth: 0 }} {...props}>{children || ''}</td>;
+              // Process table cell content - handle lists, bold, line breaks
+              const processedContent = processTableCellContent(content);
+              
+              return (
+                <td className="p-4 border border-[#EEF2FF] dark:border-[#374151] align-top text-[#595657] dark:text-[#9ca3af] bg-white dark:bg-[#111827] break-words" style={{ wordWrap: 'break-word', overflowWrap: 'anywhere', maxWidth: '300px' }} {...props}>
+                  {processedContent || children || ''}
+                </td>
+              );
             } catch (e) {
               console.error('Error rendering table cell:', e);
               return <td className="p-4 border border-[#EEF2FF] dark:border-[#374151] align-top text-[#595657] dark:text-[#9ca3af] bg-white dark:bg-[#111827]">{children || ''}</td>;
@@ -464,5 +701,3 @@ const SafeMarkdown: React.FC<SafeMarkdownProps> = memo(({ content }) => {
 SafeMarkdown.displayName = 'SafeMarkdown';
 
 export default SafeMarkdown;
-
-

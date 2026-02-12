@@ -109,11 +109,12 @@ const ICPSetupForm: React.FC<ICPSetupFormProps> = ({ onSubmit, isSubmitting }) =
 
             if (profileData?.website) {
               setUserRegisteredWebsite(profileData.website);
+              // Only pre-populate if the field is empty - don't override user input
               setFormData(prev => ({
                 ...prev,
-                companyWebsite: profileData.website
+                companyWebsite: prev.companyWebsite || profileData.website
               }));
-              return;
+              // Don't return here - allow user to override
             }
           }
 
@@ -124,6 +125,7 @@ const ICPSetupForm: React.FC<ICPSetupFormProps> = ({ onSubmit, isSubmitting }) =
               // Use the domain as website (add https://)
               const websiteUrl = `https://${emailDomain}`;
               setUserRegisteredWebsite(websiteUrl);
+              // Only pre-populate if the field is empty - don't override user input
               setFormData(prev => ({
                 ...prev,
                 companyWebsite: prev.companyWebsite || websiteUrl

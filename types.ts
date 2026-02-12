@@ -174,6 +174,65 @@ export interface PersonaBreakdown {
   };
   /** Key challenges and pain points */
   challenges: string[];
+  /** Firmographic information (company size, revenue, industry, location) */
+  firmographics?: {
+    companySize?: string;
+    companyRevenue?: string;
+    industry?: string;
+    location?: string;
+    companyType?: string;
+  };
+  /** Demographic information (education, years of experience, etc.) */
+  demographics?: {
+    education?: string;
+    yearsOfExperience?: string;
+    geographicLocation?: string;
+    householdIncome?: string;
+  };
+  /** Online presence and digital behavior */
+  onlinePresence?: {
+    /** Where they spend time online (platforms, websites, communities) */
+    onlineHangouts?: string[];
+    /** Social media platforms they actively use */
+    socialMediaPlatforms?: string[];
+    /** Online communities and forums they participate in */
+    communities?: string[];
+    /** Professional networks they're part of */
+    professionalNetworks?: string[];
+  };
+  /** Advertising and content reachability */
+  advertisingReachability?: {
+    /** Best platforms to reach them with ads */
+    adPlatforms?: string[];
+    /** Best content channels to reach them */
+    contentChannels?: string[];
+    /** Preferred content formats */
+    contentFormats?: string[];
+    /** Best times to reach them */
+    optimalReachTimes?: string[];
+  };
+  /** Work habits and behaviors */
+  workHabits?: {
+    /** Typical work schedule and hours */
+    workSchedule?: string;
+    /** How they start their workday */
+    morningRoutine?: string[];
+    /** How they end their workday */
+    endOfDayRoutine?: string[];
+    /** Work-related activities and tasks */
+    workActivities?: string[];
+  };
+  /** After-work habits and behaviors */
+  afterWorkHabits?: {
+    /** Activities they engage in after work */
+    activities?: string[];
+    /** Hobbies and interests */
+    hobbies?: string[];
+    /** How they unwind */
+    unwindingActivities?: string[];
+    /** Weekend and off-hours behaviors */
+    offHoursBehaviors?: string[];
+  };
 }
 
 /**

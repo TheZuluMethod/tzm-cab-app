@@ -591,8 +591,8 @@ export const performQualityControl = async (
     
     // Validate claims in batches to reduce API calls significantly
     // Instead of 1 call per claim, we batch multiple claims per call
-    // This reduces API usage from 10-20+ calls to 2-4 calls per session
-    const BATCH_SIZE = 10; // Increased batch size - validate 10 claims per API call
+    // This reduces API usage from 10-20+ calls to 1-2 calls per session
+    const BATCH_SIZE = 20; // Increased batch size - validate 20 claims per API call (reduces API calls by 50%)
     const batches: string[][] = [];
     
     for (let i = 0; i < claims.length; i += BATCH_SIZE) {
@@ -607,7 +607,7 @@ export const performQualityControl = async (
         // Validate entire batch in single API call (much more efficient!)
         const batchResults = await retryWithBackoff(
           () => validateClaimsBatch(batch, researchData, context),
-          2, // 2 retries per batch
+          1, // 1 retry per batch (reduced to save API calls)
           1000 // 1s base delay
         );
         
@@ -641,15 +641,16 @@ export const performQualityControl = async (
     
     // Determine if report is valid (no critical errors)
     const hasErrors = issues.some(issue => issue.severity === 'error');
-    const isValid = !hasErrors && accuracyScore >= 80; // At least 80% accuracy
+    const isValid = !hasErrors && accuracyScore >= 90; // At least 90% accuracy required
     
-    // Generate corrections if needed (with error handling)
+    // Generate corrections ONLY if score is significantly below threshold (< 85%)
+    // This prevents unnecessary API calls when score is close to acceptable
     let corrections: string | undefined;
-    if (issues.length > 0 && issues.some(i => i.severity === 'error')) {
+    if (accuracyScore < 85 && issues.length > 0 && issues.some(i => i.severity === 'error')) {
       try {
           corrections = await retryWithBackoff(
             () => generateCorrections(reportContent, issues, researchData),
-            2, // 2 retries for corrections
+            1, // 1 retry for corrections (reduced to save API calls)
             1000 // 1s base delay
           );
       } catch (correctionError) {

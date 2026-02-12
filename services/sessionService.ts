@@ -249,6 +249,72 @@ export const getSession = async (sessionId: string): Promise<{ session: SavedSes
 };
 
 /**
+ * Update session start time (when user clicks "Start Board Session")
+ */
+export const updateSessionStartTime = async (
+  sessionId: string,
+  startTime: string
+): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) {
+    return { success: true }; // Skip if Supabase not configured
+  }
+  
+  try {
+    const { error } = await supabase!
+      .from('sessions')
+      .update({ 
+        session_start_time: startTime,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+    
+    if (error) {
+      console.error('Error updating session start time:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error updating session start time:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Update session end time (when report is fully loaded/complete)
+ */
+export const updateSessionEndTime = async (
+  sessionId: string,
+  endTime: string
+): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) {
+    return { success: true }; // Skip if Supabase not configured
+  }
+  
+  try {
+    const { error } = await supabase!
+      .from('sessions')
+      .update({ 
+        session_end_time: endTime,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', sessionId);
+    
+    if (error) {
+      console.error('Error updating session end time:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error updating session end time:', errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
  * Delete a session
  */
 export const deleteSession = async (sessionId: string): Promise<{ success: boolean; error?: string }> => {

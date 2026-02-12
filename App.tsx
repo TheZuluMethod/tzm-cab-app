@@ -173,6 +173,9 @@ const App: React.FC = () => {
   // Industry dashboard data removed - no longer used
   const [competitorAnalysis, setCompetitorAnalysis] = useState<any | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionTitle, setCurrentSessionTitle] = useState<string | undefined>(undefined);
+  const [currentSessionDate, setCurrentSessionDate] = useState<string | undefined>(undefined);
+  const [currentSessionTimestamp, setCurrentSessionTimestamp] = useState<string | undefined>(undefined);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showUpgradeScreen, setShowUpgradeScreen] = useState(false);
   const [showTrialNagModal, setShowTrialNagModal] = useState(false);
@@ -609,7 +612,18 @@ const App: React.FC = () => {
       setIcpProfile(normalizedIcpProfile ?? undefined);
       setPersonaBreakdowns(normalizedPersonaBreakdowns); // Always set persona breakdowns (even if placeholders)
       setError(null); // Clear any previous errors
-      setQcStatus(null); // Reset QC status when loading
+      // Load QC status from saved session if available
+      if (session.qcStatus) {
+        setQcStatus(session.qcStatus);
+      } else {
+        setQcStatus(null);
+      }
+      // Set current session ID so Share button works
+      setCurrentSessionId(session.id);
+      // Set session title, date, and timestamp for display
+      setCurrentSessionTitle(session.title);
+      setCurrentSessionDate(session.date);
+      setCurrentSessionTimestamp(session.timestamp);
       setAppState(AppState.COMPLETE);
       setShowHistory(false);
       
@@ -689,6 +703,18 @@ const App: React.FC = () => {
       });
       setError('Cannot start session: Missing required data. Please go back and complete the setup.');
       return;
+    }
+    
+    // Track session start time for duration calculation
+    const sessionStartTime = new Date().toISOString();
+    if (currentSessionId) {
+      // Update session with start time
+      try {
+        const { updateSessionStartTime } = await import('./services/sessionService');
+        await updateSessionStartTime(currentSessionId, sessionStartTime);
+      } catch (err) {
+        console.warn('Failed to update session start time:', err);
+      }
     }
     
     // Check subscription status before starting
@@ -968,10 +994,11 @@ const App: React.FC = () => {
         throw new Error("Report generation completed but no content was generated");
       }
       
-      // Perform Quality Control validation
+      // Perform Quality Control validation with verification loop
       // CRITICAL: QC MUST always complete successfully - it uses retries and fallbacks
+      // CRITICAL: Reports must achieve at least 90% accuracy - keep verifying until threshold met
       
-      const qcResult = await performQualityControl(
+      let qcResult = await performQualityControl(
           finalReport,
           researchData || '', // Ensure researchData is always a string
           {
@@ -981,10 +1008,27 @@ const App: React.FC = () => {
             feedbackItem: userInput.feedbackItem
           }
         );
-        
-      // QC always completes (uses fallback if needed), so we always have a result
       
-      // Apply corrections if needed
+      // QC Verification: Run once and apply corrections if needed
+      // CRITICAL: Only run QC once to prevent excessive API calls
+      // If score is below 90%, apply corrections but don't re-verify (saves API calls)
+      if (qcResult.accuracyScore < 90 && qcResult.corrections && qcResult.corrections.trim().length > 0) {
+        if (import.meta.env.DEV) {
+          console.log(`🔄 QC Score ${qcResult.accuracyScore}% - below 90% threshold, applying corrections...`);
+        }
+        
+        // Apply corrections
+        finalReport = qcResult.corrections;
+        setReport(finalReport); // Update UI with corrected report
+        
+        if (import.meta.env.DEV) {
+          console.log(`✅ Corrections applied. Final score: ${qcResult.accuracyScore}%`);
+        }
+      } else if (qcResult.accuracyScore < 90) {
+        console.warn(`⚠️ QC Warning: Report accuracy ${qcResult.accuracyScore}% is below 90% threshold, but no corrections available. Proceeding with current report.`);
+      }
+      
+      // Apply final corrections if needed
       if (qcResult.corrections && qcResult.corrections.trim().length > 0) {
         setReport(qcResult.corrections);
         finalReport = qcResult.corrections;
@@ -1010,6 +1054,17 @@ const App: React.FC = () => {
       // Always set to complete if we have a report (even if QC failed)
       // This ensures the user always sees the report, even if there were issues
       if (finalReport && finalReport.trim().length > 0) {
+        // Track session end time for duration calculation (when report is fully loaded)
+        const sessionEndTime = new Date().toISOString();
+        if (currentSessionId) {
+          try {
+            const { updateSessionEndTime } = await import('./services/sessionService');
+            await updateSessionEndTime(currentSessionId, sessionEndTime);
+          } catch (err) {
+            console.warn('Failed to update session end time:', err);
+          }
+        }
+        
         // Ensure report state is set first, then immediately set COMPLETE state
         // Set both states synchronously to avoid delays
         setReport(finalReport);
@@ -1451,6 +1506,9 @@ const App: React.FC = () => {
     setPersonaBreakdowns(undefined);
     setError(null);
     setCurrentSessionId(null); // Clear current session ID on reset
+    setCurrentSessionTitle(undefined); // Clear session title on reset
+    setCurrentSessionDate(undefined); // Clear session date on reset
+    setCurrentSessionTimestamp(undefined); // Clear session timestamp on reset
     // Industry dashboard data removed
     setQcStatus(null);
     setCompetitorAnalysis(null);
@@ -1476,8 +1534,8 @@ const App: React.FC = () => {
       <main className="relative z-10 min-h-screen flex flex-col">
         
         {/* Header Area */}
-        <header className="w-full p-4 md:p-6 border-b border-[#EEF2FF] dark:border-[#374151] bg-[#EEF2FF]/80 dark:bg-[#111827]/90 backdrop-blur-sm sticky top-0 z-30 flex justify-between items-center no-print">
-           
+        <header className="w-full p-4 md:p-6 border-b border-[#EEF2FF] dark:border-[#374151] bg-[#EEF2FF]/80 dark:bg-[#111827]/90 backdrop-blur-sm sticky top-0 z-30 no-print">
+          <div className="w-full max-w-[1400px] mx-auto px-2 md:px-4 flex justify-between items-center">
            {/* Left: Logo */}
            <div className="cursor-pointer group" onClick={handleReset}>
              <ZuluLogo showText={true} />
@@ -1513,17 +1571,20 @@ const App: React.FC = () => {
                 />
               )}
            </div>
+          </div>
         </header>
 
         {/* Progress Bar - Visible after welcome */}
         {appState !== AppState.WELCOME && (
             <div className="pt-6 md:pt-8">
+              <div className="w-full max-w-[1400px] mx-auto px-2 md:px-4 mb-6 md:mb-8 bg-[#F9FAFD] dark:bg-[#1a1f2e] rounded-xl p-3 md:p-4 pb-12 md:pb-14 border border-[#EEF2FF] dark:border-[#374151]">
                 <ProgressBar currentState={appState} />
+              </div>
             </div>
         )}
 
         {/* Main Content Area */}
-        <div className="flex-grow flex flex-col items-center justify-start px-2 md:px-4 pb-12 w-full">
+        <div className="flex-grow flex flex-col items-center justify-start pb-12 w-full">
             {error && (
               <div className="w-full max-w-2xl mx-auto mb-6 p-4 bg-red-50 text-red-600 border border-red-200 rounded-lg flex items-center justify-center shadow-sm mt-8">
                 {error}
@@ -1643,6 +1704,9 @@ const App: React.FC = () => {
                     reportsRemaining: subscriptionStatus.reportsRemaining,
                     needsUpgrade: subscriptionStatus.needsUpgrade,
                   } : undefined}
+                  reportTitle={currentSessionTitle}
+                  reportDate={currentSessionDate}
+                  reportTimestamp={currentSessionTimestamp}
                 />
               </React.Suspense>
             )}
@@ -1697,6 +1761,7 @@ const App: React.FC = () => {
           onSkip={() => {
             setShowOnboarding(false);
           }}
+          onUseTemplate={handleUseTemplate}
         />
       )}
 

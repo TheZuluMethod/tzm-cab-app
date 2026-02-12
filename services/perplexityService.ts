@@ -92,7 +92,7 @@ const getPerplexityClient = async (): Promise<PerplexityClient | null> => {
 };
 
 /**
- * Perform deep research using Perplexity AI
+ * Perform deep research using Perplexity AI with caching
  * 
  * @param queries - Array of research queries to execute
  * @returns Research summary string, or empty string if Perplexity unavailable
@@ -101,6 +101,17 @@ export const performDeepResearch = async (queries: string[]): Promise<string> =>
   // Early return if no queries provided
   if (!queries || queries.length === 0) {
     return '';
+  }
+  
+  // Check cache first - use query hash as cache key
+  const { generateCacheKey, getCached, setCached } = await import('./cacheService');
+  const cacheKey = generateCacheKey('perplexityResearch', ...queries);
+  const cached = await getCached<string>(cacheKey, 'default');
+  if (cached) {
+    if (import.meta.env.DEV) {
+      console.log('✅ Using cached Perplexity research');
+    }
+    return cached;
   }
   
   try {
@@ -112,7 +123,7 @@ export const performDeepResearch = async (queries: string[]): Promise<string> =>
     // Optimize query processing for maximum research depth
     // Perplexity API supports arrays of queries in a single request for better efficiency
     const MAX_QUERIES_PER_REQUEST = 10; // Perplexity can handle multiple queries efficiently
-    const MAX_RESULTS_PER_QUERY = 10; // Get more results per query for comprehensive research
+    const MAX_RESULTS_PER_QUERY = 10; // Get maximum results for comprehensive research
     const timeoutMs = 60000; // 60 second timeout for comprehensive research
     
     // Split queries into optimized batches
@@ -178,6 +189,11 @@ export const performDeepResearch = async (queries: string[]): Promise<string> =>
       .map(result => result.value)
       .join('\n\n---\n\n');
     
+    // Cache the research result
+    await setCached(cacheKey, comprehensiveResearch, 'default').catch(() => {
+      // Fail silently - caching is not critical
+    });
+    
     return comprehensiveResearch;
   } catch (error) {
     // Log error but don't break the flow
@@ -229,6 +245,7 @@ export const generateResearchQueries = (input: ResearchQueryInput): string[] => 
   const industry = input.industry?.trim() || 'B2B';
   
   // ===== COMPANY WEBSITE RESEARCH (Deep Analysis - 8 queries) =====
+  // CRITICAL: Only use explicitly provided companyWebsite, never extract from feedbackItem
   if (input.companyWebsite && input.companyWebsite.trim()) {
     const website = input.companyWebsite.trim();
     queries.push(`${website} company overview, products, services, and value propositions - search website content, about page, product pages`);

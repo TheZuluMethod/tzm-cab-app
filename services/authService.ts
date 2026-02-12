@@ -211,15 +211,38 @@ export const changePassword = async (
  */
 export const signInWithGoogle = async (): Promise<{ error: AuthError | null }> => {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    if (!supabase) {
+      return { error: { message: 'Supabase client not initialized', name: 'AuthError' } as AuthError };
+    }
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
-    return { error };
+    
+    // If there's an error, return it
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return { error };
+    }
+    
+    // If we get data with a URL, the redirect will happen automatically
+    // No error means success - Supabase will handle the redirect
+    return { error: null };
   } catch (error: any) {
-    return { error: error as AuthError };
+    console.error('Google OAuth exception:', error);
+    return { 
+      error: { 
+        message: error?.message || 'Failed to initiate Google sign-in. Please ensure Google OAuth is enabled in Supabase.', 
+        name: 'AuthError' 
+      } as AuthError 
+    };
   }
 };
 
@@ -228,15 +251,35 @@ export const signInWithGoogle = async (): Promise<{ error: AuthError | null }> =
  */
 export const signInWithMicrosoft = async (): Promise<{ error: AuthError | null }> => {
   try {
-    const { error } = await supabase.auth.signInWithOAuth({
+    if (!supabase) {
+      return { error: { message: 'Supabase client not initialized', name: 'AuthError' } as AuthError };
+    }
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: 'email openid profile',
       },
     });
-    return { error };
+    
+    // If there's an error, return it
+    if (error) {
+      console.error('Microsoft OAuth error:', error);
+      return { error };
+    }
+    
+    // If we get data with a URL, the redirect will happen automatically
+    // No error means success - Supabase will handle the redirect
+    return { error: null };
   } catch (error: any) {
-    return { error: error as AuthError };
+    console.error('Microsoft OAuth exception:', error);
+    return { 
+      error: { 
+        message: error?.message || 'Failed to initiate Microsoft sign-in. Please ensure Azure OAuth is enabled in Supabase.', 
+        name: 'AuthError' 
+      } as AuthError 
+    };
   }
 };
 

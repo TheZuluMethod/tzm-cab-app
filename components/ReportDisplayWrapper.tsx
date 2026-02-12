@@ -21,6 +21,9 @@ interface ReportDisplayWrapperProps {
     reportsRemaining: number;
     needsUpgrade: boolean;
   };
+  reportTitle?: string;
+  reportDate?: string;
+  reportTimestamp?: string;
   // Industry dashboard data removed - no longer used
 }
 
@@ -211,7 +214,15 @@ const ReportDisplayWrapper: React.FC<ReportDisplayWrapperProps> = (props) => {
   // No try-catch needed - React render errors can only be caught by Error Boundaries
   return (
     <ReportDisplayErrorBoundary>
-      <ReportDisplay {...props} isTrial={props.isTrial} onUpgrade={props.onUpgrade} subscriptionStatus={props.subscriptionStatus} />
+      <ReportDisplay 
+        {...props} 
+        isTrial={props.isTrial} 
+        onUpgrade={props.onUpgrade} 
+        subscriptionStatus={props.subscriptionStatus}
+        reportTitle={props.reportTitle}
+        reportDate={props.reportDate}
+        reportTimestamp={props.reportTimestamp}
+      />
     </ReportDisplayErrorBoundary>
   );
 };

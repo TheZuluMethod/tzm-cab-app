@@ -334,6 +334,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onSubmit, isSubmitting, initialDa
               disabled={isSubmitting}
             >
               <option value="">Select a topic...</option>
+              <option value="Market Analysis & TAM">Market Analysis & TAM</option>
               <option value="Branding, Positioning, & Messaging">Branding, Positioning, & Messaging</option>
               <option value="Competitor Breakdown">Competitor Breakdown</option>
               <option value="Pricing & Packaging">Pricing & Packaging</option>

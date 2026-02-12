@@ -589,13 +589,26 @@ export const fetchAnalyticsData = async (): Promise<{ data: AnalyticsData | null
       completenessPercentage: totalWithICP > 0 ? Math.round((hasBoth / totalWithICP) * 100) : 0,
     };
 
-    // Average Session Duration (time from creation to completion/update)
+    // Average Session Duration (time from "Start Board Session" click to report fully loaded)
+    // Use session_start_time and session_end_time if available, otherwise fallback to created_at/updated_at
     const sessionDurations: number[] = [];
     sessions.forEach((session: any) => {
-      const created = new Date(session.created_at);
-      const updated = new Date(session.updated_at);
-      const durationMinutes = (updated.getTime() - created.getTime()) / (1000 * 60);
-      if (durationMinutes > 0 && durationMinutes < 1440) { // Less than 24 hours (reasonable)
+      let startTime: Date;
+      let endTime: Date;
+      
+      // Prefer session_start_time and session_end_time if available
+      if (session.session_start_time && session.session_end_time) {
+        startTime = new Date(session.session_start_time);
+        endTime = new Date(session.session_end_time);
+      } else {
+        // Fallback to created_at and updated_at
+        startTime = new Date(session.created_at);
+        endTime = new Date(session.updated_at);
+      }
+      
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+      // Only include reasonable durations (between 1 minute and 2 hours)
+      if (durationMinutes >= 1 && durationMinutes <= 120) {
         sessionDurations.push(durationMinutes);
       }
     });

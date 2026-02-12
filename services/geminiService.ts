@@ -347,19 +347,20 @@ export const generateBoardMembers = async (input: UserInput): Promise<BoardMembe
   try {
     return await callWithModelFallback(
       ai,
-      async (model) => {
-        if (import.meta.env.DEV) {
-          console.log(`🔍 Attempting API call with model: ${model}`);
-        }
-        const response = await ai.models.generateContent({
-          model: model,
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: responseSchema,
-            temperature: 0.7,
-          }
-        });
+          async (model) => {
+            if (import.meta.env.DEV) {
+              console.log(`🔍 Attempting API call with model: ${model}`);
+            }
+            const response = await ai.models.generateContent({
+              model: model,
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+                temperature: 0.7,
+                maxOutputTokens: 16000, // Increased for comprehensive board member generation
+              }
+            });
 
         if (response.text) {
           return JSON.parse(response.text) as BoardMember[];
@@ -616,6 +617,7 @@ export const regenerateBoardMember = async (
           config: {
             responseMimeType: "application/json",
             responseSchema: responseSchema,
+            maxOutputTokens: 4000, // Limit output tokens for efficiency
           }
         });
 
@@ -968,7 +970,44 @@ export const generatePersonaBreakdowns = async (
           "Challenge 1",
           "Challenge 2",
           "Challenge 3"
-        ]
+        ],
+        "firmographics": {
+          "companySize": "Typical company size range (e.g., '100-500 employees', 'Enterprise 5000+')",
+          "companyRevenue": "Typical company revenue range (e.g., '$10M-$50M', '$500M+')",
+          "industry": "Primary industry vertical",
+          "location": "Geographic location (e.g., 'North America', 'Global', 'US West Coast')",
+          "companyType": "Company type (e.g., 'B2B SaaS', 'Enterprise', 'Mid-market')"
+        },
+        "demographics": {
+          "education": "Typical education level (e.g., 'Bachelor's degree', 'MBA', 'Master's')",
+          "yearsOfExperience": "Years of experience range (e.g., '10-15 years', '15+ years')",
+          "geographicLocation": "Where they typically live/work",
+          "householdIncome": "Typical household income range (if relevant)"
+        },
+        "onlinePresence": {
+          "onlineHangouts": ["Where they spend time online - specific websites, platforms, communities"],
+          "socialMediaPlatforms": ["LinkedIn", "Twitter/X", "Facebook", "Instagram", "Reddit", "Discord", etc.],
+          "communities": ["Industry forums", "Professional communities", "Online groups they participate in"],
+          "professionalNetworks": ["LinkedIn groups", "Industry associations", "Professional organizations"]
+        },
+        "advertisingReachability": {
+          "adPlatforms": ["Best platforms to reach them with ads - LinkedIn, Google Ads, Facebook, etc."],
+          "contentChannels": ["Best content channels - email newsletters, industry publications, podcasts, etc."],
+          "contentFormats": ["Preferred content formats - articles, videos, webinars, case studies, etc."],
+          "optimalReachTimes": ["Best times to reach them - morning, lunch, end of day, etc."]
+        },
+        "workHabits": {
+          "workSchedule": "Typical work schedule (e.g., '9-5 EST', 'Flexible remote', 'Early riser 7-4')",
+          "morningRoutine": ["How they start their workday - check email, review reports, team standup, etc."],
+          "endOfDayRoutine": ["How they end their workday - wrap up tasks, plan tomorrow, review metrics, etc."],
+          "workActivities": ["Typical work activities - meetings, research, vendor calls, budget reviews, etc."]
+        },
+        "afterWorkHabits": {
+          "activities": ["Activities they engage in after work - exercise, family time, hobbies, etc."],
+          "hobbies": ["Hobbies and interests"],
+          "unwindingActivities": ["How they unwind - reading, TV, socializing, etc."],
+          "offHoursBehaviors": ["Weekend and off-hours behaviors - professional development, networking, etc."]
+        }
       }
       
       IMPORTANT:
@@ -977,6 +1016,12 @@ export const generatePersonaBreakdowns = async (
       - buyerType: Identify their role in the buying process
       - jobsToBeDone: Use the format "When X, I want Y so I can Z"
       - decisionMakingProcess: Structure exactly as shown with research, evaluation, and purchase sections
+      - firmographics: Include deep firmographic data based on their role and industry context
+      - demographics: Include demographic information relevant to their professional profile
+      - onlinePresence: Detail where they spend time online, which social platforms they use, and communities they're part of
+      - advertisingReachability: Specify best platforms and channels to reach them with ads and content
+      - workHabits: Describe their typical work schedule, morning/end-of-day routines, and work activities
+      - afterWorkHabits: Describe their after-work activities, hobbies, and off-hours behaviors
     `;
 
     const responseSchema = {
@@ -1022,7 +1067,62 @@ export const generatePersonaBreakdowns = async (
           },
           required: ["research", "evaluation", "purchase"]
         },
-        challenges: { type: Type.ARRAY, items: { type: Type.STRING } }
+        challenges: { type: Type.ARRAY, items: { type: Type.STRING } },
+        firmographics: {
+          type: Type.OBJECT,
+          properties: {
+            companySize: { type: Type.STRING },
+            companyRevenue: { type: Type.STRING },
+            industry: { type: Type.STRING },
+            location: { type: Type.STRING },
+            companyType: { type: Type.STRING }
+          }
+        },
+        demographics: {
+          type: Type.OBJECT,
+          properties: {
+            education: { type: Type.STRING },
+            yearsOfExperience: { type: Type.STRING },
+            geographicLocation: { type: Type.STRING },
+            householdIncome: { type: Type.STRING }
+          }
+        },
+        onlinePresence: {
+          type: Type.OBJECT,
+          properties: {
+            onlineHangouts: { type: Type.ARRAY, items: { type: Type.STRING } },
+            socialMediaPlatforms: { type: Type.ARRAY, items: { type: Type.STRING } },
+            communities: { type: Type.ARRAY, items: { type: Type.STRING } },
+            professionalNetworks: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        },
+        advertisingReachability: {
+          type: Type.OBJECT,
+          properties: {
+            adPlatforms: { type: Type.ARRAY, items: { type: Type.STRING } },
+            contentChannels: { type: Type.ARRAY, items: { type: Type.STRING } },
+            contentFormats: { type: Type.ARRAY, items: { type: Type.STRING } },
+            optimalReachTimes: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        },
+        workHabits: {
+          type: Type.OBJECT,
+          properties: {
+            workSchedule: { type: Type.STRING },
+            morningRoutine: { type: Type.ARRAY, items: { type: Type.STRING } },
+            endOfDayRoutine: { type: Type.ARRAY, items: { type: Type.STRING } },
+            workActivities: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        },
+        afterWorkHabits: {
+          type: Type.OBJECT,
+          properties: {
+            activities: { type: Type.ARRAY, items: { type: Type.STRING } },
+            hobbies: { type: Type.ARRAY, items: { type: Type.STRING } },
+            unwindingActivities: { type: Type.ARRAY, items: { type: Type.STRING } },
+            offHoursBehaviors: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
       },
       required: ["personaName", "personaTitle", "buyerType", "ageRange", "preferredCommunicationChannels", "titles", "otherRelevantInfo", "attributes", "jobsToBeDone", "decisionMakingProcess", "challenges"]
     };
@@ -1038,6 +1138,7 @@ export const generatePersonaBreakdowns = async (
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
                 temperature: 0.7,
+                maxOutputTokens: 20000, // Increased for comprehensive persona breakdowns
               }
             });
 
@@ -1101,9 +1202,18 @@ export const streamAnalysis = async (
 ): Promise<{ report: string; researchData: string }> => {
   const ai = getClient();
   
+  // CRITICAL: Ensure we ONLY use the explicitly provided companyWebsite from user input
+  // NEVER extract URLs from feedbackItem or use any other source
+  const actualCompanyWebsite = input.companyWebsite && input.companyWebsite.trim() ? input.companyWebsite.trim() : undefined;
+  
+  if (import.meta.env.DEV && actualCompanyWebsite) {
+    console.log('🔍 Using companyWebsite from user input:', actualCompanyWebsite);
+  }
+  
   // Perform Perplexity research first (with feedback type for specialized research)
+  // CRITICAL: Only pass the explicitly provided companyWebsite, never extract from feedbackItem
   const researchQueries = generateResearchQueries({
-    companyWebsite: input.companyWebsite,
+    companyWebsite: actualCompanyWebsite, // ONLY use explicitly provided website
     industry: input.industry,
     icpTitles: input.icpTitles,
     competitors: input.competitors,
@@ -1156,7 +1266,7 @@ TASK:
 Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structure and organization of the original research, but ensure all content is accurate, verified, and enhanced with additional depth and breadth.
 `;
 
-      // Run Gemini and Claude verifications in parallel for optimal performance
+      // Run Gemini and Claude verifications in parallel for optimal verification quality
       const [geminiVerification, claudeVerification] = await Promise.allSettled([
         // Gemini verification
         callWithModelFallback(
@@ -1169,7 +1279,7 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
               contents: verificationPrompt,
               config: {
                 temperature: 0.1, // Low temperature for factual accuracy
-                maxOutputTokens: 4000, // Limit output for speed
+                maxOutputTokens: 4000, // Full verification output
               }
             });
             
@@ -1224,8 +1334,9 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
     }
   }
   
+  // Summarize board members to reduce token usage (only include essential info)
   const boardContext = members.map(m => 
-    `- ${m.name} (${m.role} at ${m.companyType}): ${m.personalityArchetype}. Expertise: ${m.expertise}`
+    `${m.name} (${m.role}, ${m.companyType}): ${m.personalityArchetype}`
   ).join('\n');
 
   const fileContext = input.files.map(f => `File: ${f.name} (${f.mimeType})\nData: ${f.data}`).join('\n\n');
@@ -1245,6 +1356,7 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
   const isBrainstorming = feedbackType.includes('brainstorming') && feedbackType.includes('session');
   const isCompetitorBreakdown = feedbackType.includes('competitor') && feedbackType.includes('breakdown');
   const isWebsiteCrawl = feedbackType.includes('website') && (feedbackType.includes('cro') || feedbackType.includes('funnel'));
+  const isMarketAnalysis = feedbackType.includes('market') && (feedbackType.includes('analysis') || feedbackType.includes('tam'));
   // Note: isNewIdea variable removed as it's not currently used in specialized requirements
   
   // Build specialized analysis requirements
@@ -1713,10 +1825,18 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
     Format the llm.txt content in a code block:
     
     \`\`\`
-    [ACTUAL LLM.TXT FILE CONTENT HERE - Generate complete file based on actual website research]
+    [YOU MUST GENERATE THE COMPLETE LLM.TXT FILE CONTENT HERE - NOT A PLACEHOLDER]
+    [Include: Site overview, key pages, important content sections, contact information, citation format, company name, products, and key information]
+    [This must be a complete, ready-to-use llm.txt file based on actual website research]
     \`\`\`
     
-    The content must be a complete, valid llm.txt file that can be directly uploaded to the website root.
+    CRITICAL REQUIREMENTS:
+    - You MUST generate the ACTUAL, COMPLETE llm.txt file content
+    - Do NOT use placeholders like "[ACTUAL LLM.TXT FILE CONTENT HERE]"
+    - Do NOT use brackets or placeholder text
+    - Generate REAL content based on the actual website research conducted above
+    - The content must be a complete, valid llm.txt file that can be directly uploaded to the website root
+    - Include all required sections: site overview, key pages, contact info, citation format, company details
     
     **Why You Need This:**
     - Improves visibility in Google's Generative Experience and AI Overviews
@@ -1802,6 +1922,392 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
     ## Board-Level Strategic Recommendations
     (High-level strategic recommendations for website optimization, SEO/GEO strategy, and CRO improvements based on all findings)
     `;
+  } else if (isMarketAnalysis) {
+    specializedRequirements = `
+    MARKET ANALYSIS & TAM-SPECIFIC ANALYSIS REQUIREMENTS:
+    - CRITICAL: Use the user's input from the first two input sections (ICP Setup and CAB Set Up) to provide deep and broad analysis on the market space
+    - Provide comprehensive market analysis including TAM/SAM/SOM calculations with clear methodology
+    - Include all standard report sections: The Roast, The Gold, Raw Board Transcript, Executive Dashboard, and other usual items
+    - Base all analysis on ACTUAL market research - NEVER use assumptions or generic market data
+    - Provide clear market definition and segmentation based on ${input.industry || 'the industry'} and ${input.icpTitles || 'target customers'}
+    - Calculate TAM/SAM/SOM using both top-down and bottom-up methodologies with reconciliation
+    - Analyze market dynamics, growth rates, and key drivers based on actual research
+    - Provide competitive landscape analysis with positioning maps and market share estimates
+    - Include buyer analysis with firmographic and behavioral criteria
+    - Detail go-to-market implications with channel analysis and sales cycle information
+    - Identify risk factors and assumptions with sensitivity analysis
+    - Cite all data sources and provide confidence levels for each analysis
+    `;
+    
+    executiveDashboardRows = `
+    REQUIRED ROWS FOR MARKET ANALYSIS & TAM:
+    - Market Size (TAM)
+    - Serviceable Market (SAM)
+    - Serviceable Obtainable Market (SOM)
+    - Market Growth Rate
+    - Competitive Intensity
+    - ICP Fit Score
+    - Go-To-Market Readiness
+    - Market Risk Level
+    - Board-Level Concerns
+    `;
+    
+    specializedSections = `
+    # Market Analysis & TAM Report
+    
+    ## Market Definition and Segmentation
+    
+    ### Clear Market Definition
+    - Define the market you're addressing (NOT inflated - be realistic and specific)
+    - What problem does this market solve?
+    - What are the boundaries of this market?
+    - How does this market relate to ${input.industry || 'the industry'}?
+    
+    ### Market Segmentation
+    Segment the market by:
+    - **Company Size**: ${input.companySize && input.companySize.length > 0 ? input.companySize.join(', ') : 'Various sizes'}
+    - **Industry Vertical**: ${input.industry || 'Industry verticals'}
+    - **Geography**: Regional, national, or global segments
+    - **Use Case**: Different use cases and applications within the market
+    
+    ### Adjacent Markets and Boundaries
+    
+    What markets are adjacent to this one? Where do boundaries blur between markets?
+    
+    What markets might expand into this space? What markets might this expand into?
+    
+    Provide detailed analysis of adjacent markets and how boundaries blur. Break this into 2-3 paragraphs for readability (3-4 sentences per paragraph).
+    
+    ## TAM/SAM/SOM with Methodology
+    
+    Consider using tables for numerical calculations, market size data, growth rates, and comparative metrics when they improve clarity and enable side-by-side comparison. Use paragraphs for explanations and context, tables for structured numerical data.
+    
+    ### Top-Down Calculation
+    
+    Use industry reports, analyst data (Gartner, Forrester, IDC, etc.). Start with total addressable market size. Apply filters based on industry, geography, company size, etc.
+    
+    **Calculation Table:**
+    
+    Format the top-down calculation as a table showing each step:
+    | Step | Description | Value | Source |
+    |------|-------------|-------|--------|
+    | Base Market Size | Total market size from industry reports | $X billion | Gartner/Forrester/IDC |
+    | Industry Filter | Apply industry-specific filter | X% | Industry data |
+    | Geography Filter | Apply geographic filter | X% | Regional data |
+    | Company Size Filter | Apply company size filter | X% | Market segmentation |
+    | **Calculated TAM** | **Final TAM after filters** | **$X billion** | **Calculated** |
+    
+    **Citation:**
+    
+    Cite specific sources and data points. Include references to industry reports, analyst data, and market research.
+    
+    **Data Points Table:**
+    
+    Present data points in a table:
+    | Data Point | Value | Source | Year |
+    |------------|-------|--------|------|
+    | Global Market Size | $X billion | Gartner Magic Quadrant | 2022 |
+    | Cloud Adoption Rate | X% | Industry Report | 2023 |
+    | Low-Code Adoption | X% | Forrester Wave | 2023 |
+    
+    ### Bottom-Up Calculation
+    
+    Calculate: # of potential customers × average deal size. Identify total number of potential customers in target segments. Estimate average deal size based on ${input.companySize && input.companySize.length > 0 ? input.companySize.join(', ') : 'company size'} and ${input.companyRevenue && input.companyRevenue.length > 0 ? input.companyRevenue.join(', ') : 'revenue ranges'}.
+    
+    **Calculation Table:**
+    
+    Format the bottom-up calculation as a table:
+    | Component | Description | Value | Calculation |
+    |-----------|-------------|-------|-------------|
+    | Target Customers | Number of potential customers | X,XXX | Market research |
+    | Average Deal Size | Average annual contract value | $X,XXX | Industry benchmarks |
+    | **Calculated SAM** | **Customers × Deal Size** | **$X billion** | **X,XXX × $X,XXX** |
+    
+    **Assumptions and Data Sources Table:**
+    
+    Present assumptions in a table:
+    | Assumption | Value | Source | Confidence Level |
+    |------------|-------|--------|-----------------|
+    | Customer count | X,XXX | Market research | High/Medium/Low |
+    | Deal size | $X,XXX | Industry benchmarks | High/Medium/Low |
+    
+    ### Reconciliation of Approaches
+    
+    Compare top-down vs bottom-up calculations. Explain any discrepancies between the two approaches.
+    
+    **Reconciliation Table:**
+    
+    | Approach | TAM/SAM Value | Methodology | Confidence | Notes |
+    |---------|---------------|-------------|------------|-------|
+    | Top-Down | $X billion | Industry reports + filters | High/Medium/Low | Based on analyst data |
+    | Bottom-Up | $X billion | Customers × Deal Size | High/Medium/Low | Based on market research |
+    | **Reconciled Estimate** | **$X billion** | **Weighted average** | **High/Medium/Low** | **Reconciled value** |
+    
+    Provide reconciled TAM estimate with confidence level. Document assumptions and limitations.
+    
+    ### SAM Constraints
+    
+    Present constraints in a table:
+    | Constraint Type | Description | Impact on SAM | Mitigation Strategy |
+    |----------------|-------------|---------------|---------------------|
+    | Geographic | Limited to North America | Reduces SAM by X% | Expand to EMEA/APAC |
+    | Resource | Limited sales capacity | Reduces SAM by X% | Hire additional sales team |
+    | Channel | Limited channel partners | Reduces SAM by X% | Build partner network |
+    
+    ### SOM Targets with Timeline
+    
+    Present SOM targets in a table with timeline:
+    | Timeline | SOM Target | Market Share | Growth Rate | Key Assumptions |
+    |----------|------------|-------------|-------------|----------------|
+    | Year 1 | $X million | X% | X% | Initial market entry |
+    | Year 3 | $X million | X% | X% | Established presence |
+    | Year 5 | $X million | X% | X% | Market leadership |
+    
+    ## Market Dynamics
+    
+    ### Growth Rate and Historical Trends
+    
+    Present growth data in a table:
+    | Year | Market Size | Growth Rate (CAGR) | Notes |
+    |------|-------------|-------------------|-------|
+    | 2019 | $X billion | X% | Baseline year |
+    | 2020 | $X billion | X% | Impact of [event] |
+    | 2021 | $X billion | X% | Recovery/growth |
+    | 2022 | $X billion | X% | Current data |
+    | 2023 | $X billion | X% | Projected |
+    | 2024-2028 | $X billion | X% CAGR | Projected growth |
+    
+    **Regional Growth Variations Table:**
+    
+    | Region | Current Size | Growth Rate | Projected Size (5 years) | Key Drivers |
+    |--------|--------------|-------------|-------------------------|-------------|
+    | North America | $X billion | X% | $X billion | Mature market |
+    | Europe (EMEA) | $X billion | X% | $X billion | GDPR compliance |
+    | Asia-Pacific | $X billion | X% | $X billion | Digital transformation |
+    
+    ### Key Drivers Accelerating Growth
+    - What factors are driving market growth?
+    - Technology trends
+    - Regulatory changes
+    - Economic factors
+    - Customer behavior shifts
+    
+    ### Key Drivers Decelerating Growth
+    - What factors might slow market growth?
+    - Market saturation
+    - Economic headwinds
+    - Regulatory challenges
+    - Competitive pressures
+    
+    ### Regulatory or Macroeconomic Factors
+    - Regulatory environment affecting the market
+    - Macroeconomic trends (inflation, recession, etc.)
+    - Government policies or incentives
+    - International trade factors
+    
+    ### Technology Shifts Affecting the Market
+    - Emerging technologies impacting the market
+    - Technology adoption trends
+    - Disruptive technologies
+    - Platform shifts
+    
+    ## Competitive Landscape
+    
+    ### Direct Competitors with Positioning Map
+    
+    List direct competitors: ${input.competitors || 'Research and identify top competitors'}. Show where each competitor positions themselves. Show where the user's company should position.
+    
+    **Position Map:**
+    
+    Create positioning map (2x2 or 3x3 matrix). Format the positioning map on its own lines with clear axis labels and competitor positions. Use a structured format like:
+    
+    X-Axis: [Label] ← → [Label]
+    Y-Axis: [Label] ↑ ↓ [Label]
+    
+    Competitor positions:
+    - Competitor 1: [Position description]
+    - Competitor 2: [Position description]
+    - User's Company: [Position description]
+    
+    ### Indirect Competitors and Substitutes
+    - What are indirect competitors?
+    - What substitutes exist for this solution?
+    - How do substitutes affect market size?
+    
+    ### Market Share Estimates
+    
+    Present market share data in a table:
+    | Competitor | Market Share | Revenue (Est.) | Growth Trend | Notes |
+    |------------|--------------|----------------|--------------|-------|
+    | Competitor 1 | X% | $X billion | ↑/↓/→ | Market leader |
+    | Competitor 2 | X% | $X billion | ↑/↓/→ | Growing |
+    | Competitor 3 | X% | $X billion | ↑/↓/→ | Declining |
+    | Others | X% | $X billion | ↑/↓/→ | Fragmented |
+    | **Total Market** | **100%** | **$X billion** | **X% CAGR** | **Market size** |
+    
+    **Market Concentration Analysis Table:**
+    
+    | Metric | Value | Interpretation |
+    |--------|-------|----------------|
+    | Top 3 Market Share | X% | Highly/Moderately/Fragmented |
+    | HHI Index | XXXX | Concentration level |
+    | Market Fragmentation | High/Medium/Low | Competitive intensity |
+    
+    **Market Share Trends Over Time Table:**
+    
+    | Year | Competitor 1 | Competitor 2 | Competitor 3 | Others | Total |
+    |------|--------------|--------------|--------------|--------|-------|
+    | 2020 | X% | X% | X% | X% | 100% |
+    | 2021 | X% | X% | X% | X% | 100% |
+    | 2022 | X% | X% | X% | X% | 100% |
+    | 2023 | X% | X% | X% | X% | 100% |
+    
+    ### Competitive Moats and Vulnerabilities
+    - What moats do competitors have?
+    - What vulnerabilities exist in competitor positions?
+    - What moats can the user build?
+    - What vulnerabilities does the user have?
+    
+    ### Pricing Benchmarks Across the Market
+    
+    **Competitor Pricing Comparison Table:**
+    
+    | Competitor | Pricing Model | Entry Tier | Mid Tier | Enterprise Tier | Notes |
+    |------------|---------------|------------|----------|-----------------|-------|
+    | Competitor 1 | Usage-based | $X/month | $X/month | Custom | Variable pricing |
+    | Competitor 2 | Fixed-fee | $X/month | $X/month | $X/month | Predictable pricing |
+    | Competitor 3 | Per-seat | $X/user/month | $X/user/month | $X/user/month | Seat-based |
+    | User's Company | Fixed-fee | $X/month | $X/month | $X/month | Unlimited usage |
+    
+    **Pricing Ranges by Segment Table:**
+    
+    | Segment | Average Price | Price Range | Typical Model | Notes |
+    |---------|---------------|-------------|---------------|-------|
+    | SMB | $X/month | $X - $X/month | Fixed-fee | Price-sensitive |
+    | Mid-Market | $X/month | $X - $X/month | Hybrid | Value-focused |
+    | Enterprise | $X/month | $X - $X/month | Custom | Feature-rich |
+    
+    **Pricing Strategy Comparison Table:**
+    
+    | Strategy | Pros | Cons | Best For | Market Adoption |
+    |----------|------|------|----------|-----------------|
+    | Usage-based | Scales with usage | Unpredictable costs | High-volume users | X% of market |
+    | Fixed-fee | Predictable costs | May be expensive for low usage | Budget-conscious | X% of market |
+    | Per-seat | Fair pricing | Can get expensive | Team-based | X% of market |
+    
+    **Price Sensitivity Analysis Table:**
+    
+    | Segment | Price Sensitivity | Willingness to Pay | Key Price Factors | Notes |
+    |---------|------------------|-------------------|-------------------|-------|
+    | SMB | High | $X - $X/month | ROI, budget constraints | Very price-sensitive |
+    | Mid-Market | Medium | $X - $X/month | Value, features | Balanced approach |
+    | Enterprise | Low | $X+/month | Features, support | Less price-sensitive |
+    
+    ## Buyer Analysis
+    
+    ### ICP Definition with Firmographic and Behavioral Criteria
+    - Firmographic criteria: ${input.companySize && input.companySize.length > 0 ? input.companySize.join(', ') : 'Company size'}, ${input.companyRevenue && input.companyRevenue.length > 0 ? input.companyRevenue.join(', ') : 'Revenue'}, ${input.industry || 'Industry'}
+    - Behavioral criteria: Buying patterns, decision-making processes, technology adoption
+    - ICP titles: ${input.icpTitles || 'Target customer titles'}
+    - Solutions they need: ${input.solutions || 'Solutions'}
+    - Problems they solve: ${input.coreProblems || 'Core problems'}
+    
+    ### Buying Committee Composition
+    - Who's involved in purchase decisions?
+    - Who has veto power?
+    - What are the roles of each committee member?
+    - How does the committee make decisions?
+    
+    ### Purchase Triggers and Timing Patterns
+    - What triggers a purchase?
+    - When do they typically buy?
+    - What's the typical buying cycle?
+    - Seasonal or cyclical patterns?
+    
+    ### Current Solutions and Switching Costs
+    - What solutions are buyers currently using?
+    - What are the switching costs?
+    - What barriers exist to switching?
+    - How can switching costs be reduced?
+    
+    ### Budget Allocation Trends
+    - How do buyers allocate budget for this type of solution?
+    - What percentage of budget goes to this category?
+    - Budget trends over time
+    - Budget by company size/revenue
+    
+    ## Go-To-Market Implications
+    
+    ### Channel Analysis
+    - Which channels reach which segments?
+    - Direct sales vs partner channels
+    - Digital vs traditional channels
+    - Channel effectiveness by segment
+    
+    ### Sales Cycle Length by Segment
+    - Average sales cycle for each segment
+    - Factors affecting sales cycle length
+    - How to optimize sales cycles
+    
+    ### Win/Loss Patterns
+    - Win rates by segment (if data available)
+    - Loss reasons and patterns
+    - How to improve win rates
+    
+    ### Pricing Sensitivity by Segment
+    - Which segments are price-sensitive?
+    - Which segments value features over price?
+    - Pricing strategies by segment
+    
+    ### Land-and-Expand Potential
+    - Initial deal size by segment
+    - Expansion potential
+    - Average expansion rate
+    - Strategies for land-and-expand
+    
+    ## Risk Factors and Assumptions
+    
+    ### What Has to Be True for TAM to Hold
+    - Key assumptions underlying TAM calculation
+    - What must be true for market size to be accurate?
+    - Validation strategies for assumptions
+    
+    ### Market Risks
+    - **Consolidation**: Risk of market consolidation
+    - **Commoditization**: Risk of solution becoming commoditized
+    - **Disruption**: Risk of disruptive technologies or business models
+    - **Regulatory**: Regulatory risks
+    - **Economic**: Economic downturn risks
+    
+    ### Sensitivity Analysis on Key Assumptions
+    - How sensitive is TAM/SAM/SOM to key assumptions?
+    - Best case, base case, worst case scenarios
+    - Impact of assumption changes on market size
+    
+    ## Data Sources and Confidence Levels
+    
+    ### Primary Research Conducted
+    - What primary research was conducted?
+    - Surveys, interviews, focus groups
+    - Sample sizes and methodologies
+    - Key findings from primary research
+    
+    ### Secondary Sources Cited
+    - Industry reports (Gartner, Forrester, IDC, etc.)
+    - Market research firms
+    - Government data
+    - Academic research
+    - Trade publications
+    
+    ### Extrapolation vs Hard Data
+    - Where are you extrapolating vs using hard data?
+    - Confidence levels for each data point
+    - Limitations of data sources
+    - Recommendations for additional research
+    
+    ## Board-Level Strategic Recommendations
+    (High-level strategic recommendations for market entry, positioning, and go-to-market strategy based on all findings)
+    `;
   } else {
     // Default/Other topic - adapt based on the actual ask
     specializedRequirements = `
@@ -1861,8 +2367,14 @@ Return the VERIFIED, ENHANCED, and CORRECTED research data. Maintain the structu
     Conduct a deep "Zulu Method" analysis of the user's ask using the 20 assembled personas. As the Facilitator, synthesize their diverse perspectives into a comprehensive, actionable report.
     
     INPUTS:
-    ${input.companyWebsite ? `- Company Website: ${input.companyWebsite} (Deep research conducted on offerings, products, market position)` : ''}
+    ${actualCompanyWebsite ? `- Company Website: ${actualCompanyWebsite} (Deep research conducted on offerings, products, market position)` : '- Company Website: NOT PROVIDED - Do NOT infer or extract from feedbackItem'}
     - Industry: ${input.industry}
+    
+    CRITICAL: The Company Website field above is the ONLY website URL you should use for research. 
+    - If Company Website is "NOT PROVIDED", you MUST NOT extract URLs from the feedbackItem or infer a website
+    - If Company Website is provided, use ONLY that URL for all website-related research
+    - NEVER extract or infer website URLs from the feedbackItem text
+    - ALL research must be based on the explicitly provided Company Website URL, or general industry research if no website is provided
     ${icpContext ? `- ${icpContext}` : ''}
     ${input.companySize && input.companySize.length > 0 ? `- Ideal Company Size: ${input.companySize.join(', ')}` : ''}
     ${input.companyRevenue && input.companyRevenue.length > 0 ? `- Ideal Company Revenue: ${input.companyRevenue.join(', ')}` : ''}
@@ -1887,21 +2399,23 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
 - Actionable Suggestions: ${comp.actionableSuggestions.join('; ')}
 `).join('\n')}\n=== END COMPETITOR ANALYSIS ===\n` : ''}
     
-    ${verifiedResearchData ? `\n=== VERIFIED RESEARCH DATA (Perplexity AI + Multi-LLM Verification) ===\n${verifiedResearchData}\n=== END VERIFIED RESEARCH ===\n\nCRITICAL: This research data has been verified by Perplexity AI (initial deep research) and multiple AI verification systems (Gemini AI and Claude AI for veracity checking, depth/breadth enhancement, logical consistency, and hallucination detection). Heavily leverage this verified research data throughout your analysis. This research contains:\n${input.companyWebsite ? `- Deep analysis of ${input.companyWebsite} including products, offerings, market position, and competitive positioning\n` : ''}- Current market trends and verified industry data (verified for accuracy)\n- Competitive intelligence and market positioning insights (fact-checked)\n- Role-specific challenges and priorities (validated)\n- Market language and buyer intent from SEO keyword analysis (verified)\n- Company size/revenue-specific behaviors and decision-making patterns (fact-checked)${isPricing ? '\n- Pricing expert insights from Marcos Rivera, Ulrik Lehrskov-Schmidt, and Utpal Dholakia (verified)\n- Industry pricing benchmarks, competitor pricing strategies, and pricing model best practices (fact-checked)' : ''}${isBranding ? '\n- Messaging best practices, conversion-optimized copy examples, and brand positioning strategies (verified)' : ''}${isCompetitorBreakdown ? '\n- Comprehensive competitor data including keywords, messaging, pricing, and competitive positioning (verified)' : ''}\n${input.companyWebsite ? `- Website-specific insights including messaging, content strategy, and customer base (verified)\n` : ''}\nIntegrate specific facts, statistics, and insights from this VERIFIED research into your analysis. All data has been checked for veracity, enhanced with additional depth and breadth, and verified to contain zero hallucinations. Cross-reference findings with the research data to provide fact-checked, current market insights. ${input.companyWebsite ? `Pay special attention to how the company website research informs your understanding of their market position and offerings.` : ''}\n` : ''}
+    ${verifiedResearchData ? `\n=== VERIFIED RESEARCH DATA (Perplexity AI + Multi-LLM Verification) ===\n${verifiedResearchData}\n=== END VERIFIED RESEARCH ===\n\nCRITICAL: This research data has been verified by Perplexity AI (initial deep research) and multiple AI verification systems (Gemini AI and Claude AI for veracity checking, depth/breadth enhancement, logical consistency, and hallucination detection). Heavily leverage this verified research data throughout your analysis. This research contains:\n${actualCompanyWebsite ? `- Deep analysis of ${actualCompanyWebsite} including products, offerings, market position, and competitive positioning\n` : ''}- Current market trends and verified industry data (verified for accuracy)\n- Competitive intelligence and market positioning insights (fact-checked)\n- Role-specific challenges and priorities (validated)\n- Market language and buyer intent from SEO keyword analysis (verified)\n- Company size/revenue-specific behaviors and decision-making patterns (fact-checked)${isPricing ? '\n- Pricing expert insights from Marcos Rivera, Ulrik Lehrskov-Schmidt, and Utpal Dholakia (verified)\n- Industry pricing benchmarks, competitor pricing strategies, and pricing model best practices (fact-checked)' : ''}${isBranding ? '\n- Messaging best practices, conversion-optimized copy examples, and brand positioning strategies (verified)' : ''}${isCompetitorBreakdown ? '\n- Comprehensive competitor data including keywords, messaging, pricing, and competitive positioning (verified)' : ''}\n${actualCompanyWebsite ? `- Website-specific insights including messaging, content strategy, and customer base (verified)\n` : ''}\nIntegrate specific facts, statistics, and insights from this VERIFIED research into your analysis. All data has been checked for veracity, enhanced with additional depth and breadth, and verified to contain zero hallucinations. Cross-reference findings with the research data to provide fact-checked, current market insights. ${actualCompanyWebsite ? `Pay special attention to how the company website research informs your understanding of their market position and offerings.` : ''}\n` : ''}
     
     THE BOARD:
     ${boardContext}
 
     CRITICAL ANALYSIS REQUIREMENTS:
     1. CRITICAL: NEVER use assumptions, generic data, or market averages - ALWAYS perform ACTUAL research and analysis
-    2. CRITICAL: If competitors are provided, research ACTUAL competitor websites - crawl their sites, analyze ACTUAL keywords, messaging, pricing, and features. NEVER use generic competitor assumptions.
-    3. CRITICAL: If competitors are NOT provided but ${input.companyWebsite || 'website'} is available, research the website to identify top 5 competitors through actual market research
-    4. CRITICAL: Find ACTUAL keywords and phrases used by competitors through real research - never assume or use generic keywords
-    5. CRITICAL: Review and analyze ACTUAL websites to provide truly customized and actual feedback - never use vague language like "often", "usually", "typically"
-    6. Use the SEO keywords (${input.seoKeywords || 'not provided'}) to understand market language, search intent, and how the target audience thinks about related topics
-    7. Consider the industry context (${input.industry}) and ICP titles (${input.icpTitles || 'various'}) when evaluating messaging, positioning, and product fit
-    8. Consider company size ranges (${input.companySize && input.companySize.length > 0 ? input.companySize.join(', ') : 'various'}) and revenue ranges (${input.companyRevenue && input.companyRevenue.length > 0 ? input.companyRevenue.join(', ') : 'various'}) when assessing budget constraints, decision-making processes, and organizational maturity
-    9. ${verifiedResearchData ? 'CRITICAL: Integrate the VERIFIED research data above (verified by both Perplexity AI and Gemini AI) to provide fact-checked, current market insights. All research data has been verified for veracity, enhanced with depth/breadth, and checked for hallucinations. Cross-reference findings with the verified research data.' : 'Perform deep research and fact-checking against the provided context, competitor landscape, SEO keyword insights, company size/revenue context, and general knowledge.'}
+    2. CRITICAL: NEVER extract or infer website URLs from the feedbackItem text. Use ONLY the Company Website field provided above. If Company Website is "NOT PROVIDED", do NOT extract URLs from feedbackItem.
+    3. CRITICAL: If competitors are provided, research ACTUAL competitor websites - crawl their sites, analyze ACTUAL keywords, messaging, pricing, and features. NEVER use generic competitor assumptions.
+    4. CRITICAL: If competitors are NOT provided but ${actualCompanyWebsite || 'website'} is available, research the website to identify top 5 competitors through actual market research
+    5. CRITICAL: Find ACTUAL keywords and phrases used by competitors through real research - never assume or use generic keywords
+    6. CRITICAL: Review and analyze ACTUAL websites to provide truly customized and actual feedback - never use vague language like "often", "usually", "typically"
+    7. Use the SEO keywords (${input.seoKeywords || 'not provided'}) to understand market language, search intent, and how the target audience thinks about related topics
+    8. Consider the industry context (${input.industry}) and ICP titles (${input.icpTitles || 'various'}) when evaluating messaging, positioning, and product fit
+    9. Consider company size ranges (${input.companySize && input.companySize.length > 0 ? input.companySize.join(', ') : 'various'}) and revenue ranges (${input.companyRevenue && input.companyRevenue.length > 0 ? input.companyRevenue.join(', ') : 'various'}) when assessing budget constraints, decision-making processes, and organizational maturity
+    10. CRITICAL: The Company Website field in INPUTS above is the ONLY website URL to use. NEVER extract URLs from feedbackItem or infer websites. If Company Website is "NOT PROVIDED", perform general industry research only.
+    11. ${verifiedResearchData ? 'CRITICAL: Integrate the VERIFIED research data above (verified by both Perplexity AI and Gemini AI) to provide fact-checked, current market insights. All research data has been verified for veracity, enhanced with depth/breadth, and checked for hallucinations. Cross-reference findings with the verified research data.' : 'Perform deep research and fact-checking against the provided context, competitor landscape, SEO keyword insights, company size/revenue context, and general knowledge.'}
     ${specializedRequirements}
 
     CRITICAL FORMATTING RULES (MUST BE FOLLOWED EXACTLY):
@@ -1910,17 +2424,46 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
     3.  Never duplicate Section Headers in the body content below the header.
     4.  Use exactly the Sub-Headers provided below (H3 ###) for specific sections. H3 headers MUST use ### at the start AND be bold using **bold** markdown (e.g., ### **Section Title**).
     5.  Use double line breaks (two newlines) between ALL paragraphs, list items, and below H3s for readability.
-    6.  Keep paragraphs short (max 3 sentences). Each paragraph should be on its own line(s).
-    7.  All paragraphs should use normal text formatting (not bold unless emphasizing specific words with **bold**).
-    8.  For the Executive Dashboard Table, you MUST use standard Markdown syntax (using pipes |). DO NOT use HTML tags like <table>.
-    9.  H2 headers (##) should be used sparingly and only when needed for major subsections. They should be bold.
-    10. Ensure all text flows naturally and is properly formatted with correct spacing.
-    11. NEVER output raw, unformatted text. ALL content must be properly structured with headers, paragraphs, lists, or tables.
-    12. NEVER leave sections empty or blank. Every section must have substantial, formatted content.
-    13. If a section has no content, omit it entirely rather than leaving it empty.
-    14. Ensure proper spacing: one blank line between sections, two blank lines after H1 headers, one blank line after H3 headers.
-    15. All H3 headers must be formatted as: ### **Header Text** (with both ### and **bold**).
-    16. CRITICAL: Before finalizing the report, review ALL text for spelling, grammar, syntax, and readability. Ensure professional, polished language throughout.
+    6.  CRITICAL PARAGRAPH FORMATTING RULE (MANDATORY): NEVER write paragraphs longer than 4 sentences. ALWAYS break up long paragraphs into smaller ones of 3-4 sentences maximum each. This is a MANDATORY FORMATTING rule for display/readability - it does NOT limit content length or depth. Content can be as comprehensive as needed, but MUST be formatted with proper paragraph breaks. This applies to ALL report sections without exception. If you find yourself writing a paragraph with 5+ sentences, STOP and break it into 2-3 smaller paragraphs immediately.
+    7.  GUIDELINE: USE TABLES/MATRICES WHEN THEY IMPROVE READABILITY: Consider using markdown tables or matrices when presenting numerical data, comparisons, rankings, or structured information that benefits from side-by-side comparison. Tables are particularly useful for:
+       - Pricing comparisons (competitor pricing, pricing tiers, cost breakdowns) - when comparing multiple competitors or tiers
+       - Market size data (TAM/SAM/SOM calculations, growth rates, market share) - when showing calculations or comparisons over time
+       - Feature comparisons (competitor features, product capabilities) - when comparing multiple products/competitors
+       - Rankings or scores (SEO rankings, performance metrics, quality scores) - when ranking multiple items
+       - Financial data (revenue, costs, ROI calculations) - when comparing multiple periods or entities
+       - Metrics and KPIs - when showing multiple metrics side-by-side
+       - Market segmentation data - when comparing across segments
+       Use your judgment: if a table makes the information clearer and easier to compare, use one. If a simple list or paragraph is clearer, use that instead. Use standard markdown table syntax: | Column 1 | Column 2 | Column 3 | followed by |---|---|---| separator row, then data rows.
+    8.  CRITICAL: Sections with structured data (like "Citation:", "Data Points:", "Methodology:", "Position Map:", etc.) MUST have these labels on their own lines as bold headers, NOT jammed into paragraphs. Format as: **Citation:** (on its own line), then the citation content below. Same for **Data Points:**, **Methodology:**, **Position Map:**, etc.
+    9.  CRITICAL LIST FORMATTING (MANDATORY): 
+        - ALL bullet points MUST be on separate lines. NEVER put multiple bullets in a single paragraph.
+        - Format bullets as: "- " (dash space) at the start of a NEW LINE, followed by bold text for the first 3-5 words, then normal text.
+        - Example format:
+          - **The global data integration market** is a significant and growing segment of the enterprise software industry.
+          - **Cost predictability** remains a key concern for mid-market companies evaluating data integration solutions.
+        - Each bullet point MUST be on its own line with a blank line before it (except the first one).
+        - Numbered lists MUST follow the same format: "1. " at the start of a NEW LINE, with bold first few words.
+        - NEVER write: "• Item 1 • Item 2 • Item 3" in a single line. ALWAYS format as separate lines.
+    10. CRITICAL TABLE CELL FORMATTING:
+        - Keep table cell content concise and readable. Maximum 2-3 sentences per cell.
+        - If a cell contains multiple points, use line breaks (<br>) or format as a mini-list within the cell.
+        - DO NOT put entire paragraphs in table cells. Break them up or use lists.
+        - Avoid excessive bold text in cells. Only bold key terms or the first few words if needed.
+        - If a cell has a list, format it properly with line breaks between items.
+    11. All paragraphs should use normal text formatting (not bold unless emphasizing specific words with **bold**).
+    12. For ALL tables (including Executive Dashboard Table), you MUST use standard Markdown syntax (using pipes |). DO NOT use HTML tags like <table>. Format tables clearly with proper headers and separator rows.
+    13. H2 headers (##) should be used sparingly and only when needed for major subsections. They should be bold.
+    14. Ensure all text flows naturally and is properly formatted with correct spacing.
+    15. NEVER output raw, unformatted text. ALL content must be properly structured with headers, paragraphs, lists, or tables.
+    16. NEVER leave sections empty or blank. Every section must have substantial, formatted content.
+    17. If a section has no content, omit it entirely rather than leaving it empty.
+    18. CRITICAL: Company Information sections MUST be formatted as tables, NOT as raw ASCII text. Use markdown table syntax with proper headers and rows.
+    19. CRITICAL: NEVER include robots.txt content (like "User-Agent: * Allow: / Crawl-delay: 10") in Company Information sections. That belongs in robots.txt analysis, not company information.
+    20. CRITICAL: If you generate a "Company Information" section, format it as a markdown table with columns like "Field | Value" or similar structured format.
+    21. CRITICAL SECTION SPACING: Each H1 section (# Header) MUST be separated by TWO blank lines before and after. Each H3 subsection (### **Header**) MUST be separated by ONE blank line before and after. This ensures proper visual separation.
+    22. All H3 headers must be formatted as: ### **Header Text** (with both ### and **bold**).
+    23. CRITICAL: Before finalizing the report, review ALL text for spelling, grammar, syntax, and readability. Ensure professional, polished language throughout.
+    24. CRITICAL: "The Roast & The Gold" and "Raw Board Transcript" are SEPARATE H1 sections. They MUST have their own # Header line, be separated by TWO blank lines from surrounding sections, and NOT be merged into other sections.
 
     REQUIRED OUTPUT STRUCTURE (Markdown):
 
@@ -1958,46 +2501,84 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
 
     # Key Research Findings & Facts
     List bullet points of objective facts, data, or verified assumptions that the board agrees on regarding the industry/ask.
+    
+    CRITICAL FORMATTING RULES FOR BULLETS:
+    1. Each bullet point MUST be on its own line/paragraph - NEVER combine multiple bullets into one paragraph
+    2. Each bullet MUST start with a bold bullet starter: **•** or **-** followed by bold text for the first few key words, then normal text
+    3. If a bullet point is very long (more than 4 sentences), break it into multiple paragraphs within the same bullet item
+    4. Format example: 
+    
+    **• The global data integration market** is a significant and growing segment. This growth is driven by increasing cloud adoption.
+    
+    **• Cloud-native solutions** are experiencing accelerated adoption. Mid-market companies particularly value agility and scalability.
+    
+    **• Total cost of ownership** is a significant decision factor. CIOs consider licensing, implementation, and maintenance costs.
     ${isPricing ? 'Include pricing benchmarks, industry standards, and competitor pricing data from research. Use tables to present pricing comparisons clearly.' : isBranding ? 'Include messaging best practices, conversion data, and market language insights from research.' : isProduct ? 'Include feature comparisons, industry standards, and competitive intelligence from research. Use tables to show feature parity.' : isBrainstorming ? 'Include market trends, competitive landscape, and validation data from research.' : isCompetitorBreakdown ? 'Include competitor intelligence, market positioning data, and competitive landscape insights from research. Use the competitor analysis data provided above to inform findings.' : isWebsiteCrawl ? 'Include SEO/GEO benchmarks, technical SEO standards, CRO best practices, and competitive website analysis from research. Use tables to show comparisons and scores.' : 'Include relevant industry data, competitive intelligence, and market insights from research.'}
     
     ${specializedSections}
 
+
     # The Roast & The Gold
+    
+    CRITICAL: This is a SEPARATE H1 section. It MUST be on its own line with # Header, separated by TWO blank lines from the section above.
     
     Format this section with clear attribution to board members. Use markdown blockquotes (>) for quoted text with member names and roles.
     
-    ### 🔥 The Roast
-    (Brutal, unfiltered criticism from the Skeptics and Budget-Hawks. What sucks? What is vague? ${isPricing ? 'What pricing elements are problematic?' : isBranding ? 'What messaging is confusing or ineffective?' : isProduct ? 'What features are missing or poorly designed?' : isBrainstorming ? 'What ideas are unrealistic or poorly thought out?' : isWebsiteCrawl ? 'What SEO/GEO issues are critical? What CRO problems are hurting conversions?' : 'What are the critical flaws?'})
+    CRITICAL: Keep all paragraphs short (max 3-4 sentences). Break long paragraphs into shorter ones.
     
-    Format as markdown blockquotes with attribution:
-    > "Critical feedback text here"  
+    ### **🔥 The Roast**
+    
+    Brutal, unfiltered criticism from the Skeptics and Budget-Hawks. What sucks? What is vague? ${isPricing ? 'What pricing elements are problematic?' : isBranding ? 'What messaging is confusing or ineffective?' : isProduct ? 'What features are missing or poorly designed?' : isBrainstorming ? 'What ideas are unrealistic or poorly thought out?' : isWebsiteCrawl ? 'What SEO/GEO issues are critical? What CRO problems are hurting conversions?' : isMarketAnalysis ? 'What market assumptions are flawed? What TAM/SAM/SOM calculations are questionable?' : 'What are the critical flaws?'}
+    
+    CRITICAL FORMATTING: Each quote MUST be in its own separate blockquote paragraph with spacing above and below. Use markdown blockquote (>) syntax. Each quote gets its own colored background block. Quotes can be as long and detailed as needed - provide comprehensive, unfiltered criticism. If a quote is long, break it into multiple paragraphs within the same blockquote for readability (3-4 sentences per paragraph):
+    
+    > "Critical feedback text here - provide comprehensive, detailed criticism. If the quote is long, break it into multiple paragraphs within the blockquote for readability (3-4 sentences per paragraph)."  
     > – **Member Name** (Role, Company Type)
     
-    Include 3-5 critical quotes from different Skeptics and Budget-Hawks board members.
     
-    ### 🏆 The Gold
-    (What is brilliant? What resonates deeply with the Visionaries and Champions? ${isPricing ? 'What pricing elements work well?' : isBranding ? 'What messaging elements are strong and conversion-focused?' : isProduct ? 'What features are innovative and valuable?' : isBrainstorming ? 'What ideas have the most potential?' : isWebsiteCrawl ? 'What SEO/GEO strengths exist? What CRO elements are working well?' : 'What are the strongest elements?'})
-    
-    Format as markdown blockquotes with attribution:
-    > "Positive feedback text here"  
+    > "Another critical feedback quote - again, be comprehensive and detailed. Break into paragraphs if needed for readability."  
     > – **Member Name** (Role, Company Type)
     
-    Include 3-5 positive quotes from different Visionaries and Champions board members.
+    Include 3-5 critical quotes from different Skeptics and Budget-Hawks board members. CRITICAL: Each quote MUST be in its own separate blockquote paragraph with ONE blank line before and after. Never combine multiple quotes into one blockquote. Each quote gets its own colored background block with proper spacing.
+    
+    ### **🏆 The Gold**
+    
+    What is brilliant? What resonates deeply with the Visionaries and Champions? ${isPricing ? 'What pricing elements work well?' : isBranding ? 'What messaging elements are strong and conversion-focused?' : isProduct ? 'What features are innovative and valuable?' : isBrainstorming ? 'What ideas have the most potential?' : isWebsiteCrawl ? 'What SEO/GEO strengths exist? What CRO elements are working well?' : isMarketAnalysis ? 'What market opportunities are compelling? What TAM/SAM/SOM insights are valuable?' : 'What are the strongest elements?'}
+    
+    CRITICAL FORMATTING: Each quote MUST be in its own separate blockquote paragraph with spacing above and below. Use markdown blockquote (>) syntax. Each quote gets its own colored background block. Quotes can be as long and detailed as needed - provide comprehensive, enthusiastic praise. If a quote is long, break it into multiple paragraphs within the same blockquote for readability (3-4 sentences per paragraph):
+    
+    > "Positive feedback text here - provide comprehensive, detailed praise. If the quote is long, break it into multiple paragraphs within the blockquote for readability (3-4 sentences per paragraph)."  
+    > – **Member Name** (Role, Company Type)
+    
+    
+    > "Another positive feedback quote - again, be comprehensive and detailed. Break into paragraphs if needed for readability."  
+    > – **Member Name** (Role, Company Type)
+    
+    Include 3-5 positive quotes from different Visionaries and Champions board members. CRITICAL: Each quote MUST be in its own separate blockquote paragraph with ONE blank line before and after. Never combine multiple quotes into one blockquote. Each quote gets its own colored background block with proper spacing.
+
 
     # Raw Board Transcript
     
-    Format this section as a dialogue between board members. Use clear attribution with member names and roles in bold.
+    CRITICAL: This is a SEPARATE H1 section. It MUST be on its own line with # Header, separated by TWO blank lines from the section above.
+    
+    Format this section as a dialogue between board members. Use clear attribution with member names and roles in bold. Each board member's response should be in its own blockquote paragraph with colored background styling.
     
     Format example:
+    
     **Facilitator:** "Opening question or prompt"
     
-    **Member Name (Role, Company Type):** "Their response or comment"
     
-    **Another Member Name (Role, Company Type):** "Their counterpoint or agreement"
+    > **Member Name (Role, Company Type):** "Their response or comment - responses can be as long and detailed as needed. If a response is long, break it into multiple paragraphs within the same blockquote for readability (3-4 sentences per paragraph)."
     
-    **Member Name (Role, Company Type):** "Further discussion or agreement"
     
-    (A summarized dialogue or 'raw notes' from the session where specific members debate key points. Use their actual names from the board roster. Show the back-and-forth discussion, disagreements, agreements, and key insights. Make it feel like a real board meeting transcript. Include 8-12 exchanges between different board members showing diverse perspectives.)
+    > **Another Member Name (Role, Company Type):** "Their counterpoint or agreement - again, be comprehensive and detailed. Break into paragraphs if needed for readability."
+    
+    
+    > **Member Name (Role, Company Type):** "Further discussion or agreement - provide full, detailed responses."
+    
+    A summarized dialogue or 'raw notes' from the session where specific members debate key points. Use their actual names from the board roster. Show the back-and-forth discussion, disagreements, agreements, and key insights. Make it feel like a real board meeting transcript. Include 8-12 exchanges between different board members showing diverse perspectives.
+    
+    CRITICAL FORMATTING: Each board member's dialogue response MUST be in its own separate blockquote paragraph (using > markdown syntax) with spacing above and below. Each response gets its own colored background block. Each dialogue exchange should be separated by ONE blank line before the blockquote. Responses should be comprehensive and detailed - no artificial length limits. If a response is long, format it with proper paragraph breaks (3-4 sentences per paragraph) within the same blockquote for readability. NEVER combine multiple responses into one blockquote - each response must be its own separate blockquote paragraph.
   `;
 
   let fullReport = '';
@@ -2027,6 +2608,7 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
             contents: prompt,
             config: {
               temperature: 0.7,
+              maxOutputTokens: 32000, // Increased for comprehensive report generation
             }
           });
           usedModel = model;
@@ -2268,14 +2850,92 @@ Competitor ${idx + 1}: ${comp.name} (${comp.domain})
       throw new Error("No content received from streaming API. Please check API configuration.");
     }
     
+    // Post-process report to remove blank sections and fix formatting issues
+    let cleanedReport = fullReport;
+    
+    // Remove blank sections (sections with only headers and no content)
+    // Pattern: Header followed by only whitespace/newlines until next header or end
+    cleanedReport = cleanedReport.replace(/(#{1,6}\s+.+?)\n{2,}(?=#{1,6}|\s*$)/g, (match, header) => {
+      // Check if there's any non-whitespace content after the header
+      const afterHeader = match.substring(header.length).trim();
+      if (!afterHeader || afterHeader.length === 0) {
+        // This is a blank section, remove it
+        return '';
+      }
+      return match;
+    });
+    
+    // Remove sections that are just headers with no content (more aggressive check)
+    const lines = cleanedReport.split('\n');
+    const cleanedLines: string[] = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line) {
+        i++;
+        continue;
+      }
+      // Check if this is a header
+      const headerMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (headerMatch) {
+        const headerLevel = headerMatch[1]?.length || 0;
+        // Look ahead to see if there's any content before the next header of same or higher level
+        let hasContent = false;
+        let j = i + 1;
+        while (j < lines.length) {
+          const nextLine = lines[j];
+          if (!nextLine) {
+            j++;
+            continue;
+          }
+          // Check if next line is a header
+          const nextHeaderMatch = nextLine.match(/^(#{1,6})\s+(.+)$/);
+          if (nextHeaderMatch) {
+            const nextHeaderLevel = nextHeaderMatch[1]?.length || 0;
+            // If next header is same or higher level, stop looking
+            if (nextHeaderLevel <= headerLevel) {
+              break;
+            }
+          }
+          // Check if this line has actual content (not just whitespace)
+          if (nextLine.trim().length > 0) {
+            hasContent = true;
+            break;
+          }
+          j++;
+        }
+        // Only include header if it has content
+        if (hasContent || j === lines.length) {
+          cleanedLines.push(line);
+        }
+        // Otherwise skip this blank section header
+      } else {
+        cleanedLines.push(line);
+      }
+      i++;
+    }
+    cleanedReport = cleanedLines.join('\n');
+    
+    // Remove multiple consecutive blank lines (more than 2)
+    cleanedReport = cleanedReport.replace(/\n{3,}/g, '\n\n');
+    
+    // Remove trailing whitespace from each line
+    cleanedReport = cleanedReport.split('\n').map(line => line ? line.trimEnd() : '').join('\n');
+    
+    // Remove leading/trailing whitespace from entire report
+    cleanedReport = cleanedReport.trim();
+    
     if (import.meta.env.DEV) {
-      console.log(`✅ Report generation complete. Total length: ${fullReport.length} characters`);
-      console.log(`📄 Report preview (first 200 chars): ${fullReport.substring(0, 200)}...`);
+      console.log(`✅ Report generation complete. Total length: ${cleanedReport.length} characters`);
+      console.log(`📄 Report preview (first 200 chars): ${cleanedReport.substring(0, 200)}...`);
+      if (cleanedReport.length !== fullReport.length) {
+        console.log(`🧹 Cleaned report: removed ${fullReport.length - cleanedReport.length} characters of blank content`);
+      }
     }
     
-    // Return the complete report and research data for QC
+    // Return the cleaned report and research data for QC
     return {
-      report: fullReport,
+      report: cleanedReport,
       researchData: perplexityResearch || ''
     };
   } catch (error) {

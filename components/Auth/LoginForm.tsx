@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { signIn, signInWithGoogle, signInWithMicrosoft, sendMagicLink } from '../../services/authService';
 import { Mail, Lock, AlertCircle, Loader2, Send, CheckCircle } from 'lucide-react';
+import { getLogoUrl } from '../../services/logoService';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -15,7 +16,14 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSwitchToReset }) => {
-  const [email, setEmail] = useState('');
+  // Load saved email from localStorage on mount
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem('zulu_saved_email') || '';
+    } catch {
+      return '';
+    }
+  });
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +31,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [isMagicLinkLoading, setIsMagicLinkLoading] = useState(false);
   const [useMagicLink, setUseMagicLink] = useState(false);
+  const logoUrl = getLogoUrl();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +48,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
       }
 
       if (user && session) {
+        // Save email to localStorage for future logins
+        try {
+          localStorage.setItem('zulu_saved_email', email);
+        } catch (e) {
+          // Silently fail if localStorage is not available
+          console.warn('Could not save email to localStorage:', e);
+        }
         onSuccess?.();
       }
     } catch (err: any) {
@@ -50,9 +66,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
   const handleGoogleSignIn = async () => {
     setIsOAuthLoading('google');
     setError(null);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      setError(error.message || 'Failed to sign in with Google');
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        // Check if it's a provider not enabled error
+        const errorMessage = error.message || '';
+        if (errorMessage.includes('not enabled') || errorMessage.includes('Unsupported provider')) {
+          setError('Google OAuth is not enabled. Please contact your administrator to enable Google sign-in in Supabase.');
+        } else {
+          setError(errorMessage || 'Failed to sign in with Google');
+        }
+        setIsOAuthLoading(null);
+      }
+      // If no error, the redirect will happen automatically
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred while signing in with Google');
       setIsOAuthLoading(null);
     }
   };
@@ -60,9 +88,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
   const handleMicrosoftSignIn = async () => {
     setIsOAuthLoading('microsoft');
     setError(null);
-    const { error } = await signInWithMicrosoft();
-    if (error) {
-      setError(error.message || 'Failed to sign in with Microsoft');
+    try {
+      const { error } = await signInWithMicrosoft();
+      if (error) {
+        // Check if it's a provider not enabled error
+        const errorMessage = error.message || '';
+        if (errorMessage.includes('not enabled') || errorMessage.includes('Unsupported provider')) {
+          setError('Microsoft OAuth is not enabled. Please contact your administrator to enable Microsoft sign-in in Supabase.');
+        } else {
+          setError(errorMessage || 'Failed to sign in with Microsoft');
+        }
+        setIsOAuthLoading(null);
+      }
+      // If no error, the redirect will happen automatically
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred while signing in with Microsoft');
       setIsOAuthLoading(null);
     }
   };
@@ -96,7 +136,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg border border-[#EEF2FF] p-8">
+      <div className="bg-[#F8F9FF] rounded-2xl shadow-lg border border-[#EEF2FF] p-8">
+        {logoUrl && (
+          <div className="flex justify-center mb-6">
+            <img 
+              src={logoUrl} 
+              alt="The Zulu Method Logo" 
+              className="h-12 w-auto"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
         <h2 className="text-2xl font-bold text-[#221E1F] mb-6 text-center">Sign In</h2>
 
         {error && (
@@ -153,11 +205,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#595657]" />
                 <input
                   id="magic-email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="your@email.com"
                 />
               </div>
@@ -203,11 +257,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#595657]" />
                 <input
                   id="email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="your@email.com"
                 />
               </div>
@@ -221,11 +277,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#595657]" />
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="••••••••"
                 />
               </div>
@@ -263,7 +321,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
               <div className="w-full border-t border-[#EEF2FF]"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-[#595657]">Or continue with</span>
+              <span className="px-2 bg-[#F8F9FF] text-[#595657]">Or continue with</span>
             </div>
           </div>
 
@@ -272,7 +330,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
               type="button"
               onClick={handleGoogleSignIn}
               disabled={!!isOAuthLoading}
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-[#EEF2FF] rounded-lg hover:bg-[#F8F9FF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-[#EEF2FF] rounded-lg bg-white hover:bg-[#F8F9FF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[#221E1F] text-sm"
             >
               {isOAuthLoading === 'google' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -305,7 +363,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToSignup, onSw
               type="button"
               onClick={handleMicrosoftSignIn}
               disabled={!!isOAuthLoading}
-              className="flex items-center justify-center gap-2 px-4 py-2 border border-[#EEF2FF] rounded-lg hover:bg-[#F8F9FF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-4 py-2 border border-[#EEF2FF] rounded-lg bg-white hover:bg-[#F8F9FF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-[#221E1F] text-sm"
             >
               {isOAuthLoading === 'microsoft' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

@@ -23,15 +23,52 @@ interface ReportDisplayProps {
     reportsRemaining: number;
     needsUpgrade: boolean;
   };
+  reportTitle?: string;
+  reportDate?: string;
+  reportTimestamp?: string;
 }
 
-const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreaming, members, icpProfile, personaBreakdowns, qcStatus, userInput, onShare, isTrial, onUpgrade, subscriptionStatus }) => {
+const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreaming, members, icpProfile, personaBreakdowns, qcStatus, userInput, onShare, onUpgrade, subscriptionStatus, reportTitle, reportDate, reportTimestamp }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showMatrix, setShowMatrix] = useState(false); // Minimized by default
   const [showICPProfile, setShowICPProfile] = useState(false);
   const [showPersonaBreakdowns, setShowPersonaBreakdowns] = useState(false);
   const [activePersonaTab, setActivePersonaTab] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
+
+  // Debug logging for ICP profile
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      const safeIcpProfileCheck = (() => {
+        try {
+          if (!icpProfile) return undefined;
+          if (typeof icpProfile !== 'object' || Array.isArray(icpProfile)) return undefined;
+          return {
+            titles: icpProfile.titles || [],
+            useCaseFit: icpProfile.useCaseFit || [],
+            signalsAndAttributes: icpProfile.signalsAndAttributes || [],
+            psychographics: icpProfile.psychographics || [],
+            buyingTriggers: icpProfile.buyingTriggers || [],
+            languagePatterns: icpProfile.languagePatterns || [],
+            narrativeFrames: icpProfile.narrativeFrames || [],
+            objections: icpProfile.objections || [],
+            copyAngles: icpProfile.copyAngles || [],
+            leadBehavioralPatterns: icpProfile.leadBehavioralPatterns || []
+          };
+        } catch (e) {
+          return undefined;
+        }
+      })();
+      console.log('🔍 ICP Profile Debug:', {
+        icpProfileExists: icpProfile !== undefined && icpProfile !== null,
+        icpProfileType: typeof icpProfile,
+        icpProfileIsArray: Array.isArray(icpProfile),
+        icpProfileKeys: icpProfile && typeof icpProfile === 'object' ? Object.keys(icpProfile) : null,
+        safeIcpProfileExists: !!safeIcpProfileCheck,
+        safeIcpProfileKeys: safeIcpProfileCheck ? Object.keys(safeIcpProfileCheck) : null
+      });
+    }
+  }, [icpProfile]);
 
   // Comprehensive logging on mount and when props change - dev only
   useEffect(() => {
@@ -59,6 +96,41 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
       }
     }
   }, [reportContent, isStreaming, members, icpProfile, personaBreakdowns, qcStatus, userInput]);
+
+  // Optimize ALL tables for better column spacing
+  useEffect(() => {
+    if (!isStreaming && reportContent) {
+      // Use setTimeout to ensure DOM is fully rendered
+      const timeoutId = setTimeout(() => {
+        // Find all tables in the report content
+        const tables = document.querySelectorAll('.report-content table');
+        tables.forEach((table) => {
+          const thead = table.querySelector('thead');
+          if (thead) {
+            const headers = Array.from(thead.querySelectorAll('th')).map(th => th.textContent?.trim().toLowerCase() || '');
+            const headerCount = headers.length;
+            
+            // Check if this is an Executive Dashboard table (has Category, Status, Observation, Recommended Action)
+            if (headerCount === 4 && 
+                (headers[0]?.includes('category') || headers[0] === 'category') &&
+                (headers[1]?.includes('status') || headers[1] === 'status') &&
+                (headers[2]?.includes('observation') || headers[2] === 'observation') &&
+                (headers[3]?.includes('recommended') || headers[3]?.includes('action'))) {
+              table.classList.add('executive-dashboard-table');
+            } else if (headerCount > 0) {
+              // Apply general table optimization to all other tables
+              // Tighten first column if it's short (like labels/categories)
+              // Give more space to remaining columns
+              table.classList.add('optimized-table');
+            }
+          }
+        });
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [reportContent, isStreaming]);
 
   // Validate and set ready state - only render when everything is validated
   useEffect(() => {
@@ -185,7 +257,19 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
       } else {
         validated.signalsAndAttributes = [];
       }
-      return validated;
+      
+      // Always return the validated profile, even if empty - let the UI decide what to show
+      // Include all fields from original ICP profile
+      return {
+        ...validated,
+        psychographics: icpProfile.psychographics || [],
+        buyingTriggers: icpProfile.buyingTriggers || [],
+        languagePatterns: icpProfile.languagePatterns || [],
+        narrativeFrames: icpProfile.narrativeFrames || [],
+        objections: icpProfile.objections || [],
+        copyAngles: icpProfile.copyAngles || [],
+        leadBehavioralPatterns: icpProfile.leadBehavioralPatterns || []
+      };
     } catch (e) {
       console.error('❌ Error validating icpProfile:', e);
       return undefined;
@@ -245,8 +329,13 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
   // Removed: isDashboardDataComplete, generateIndustryDataHtml
 
   // Export to HTML
-  const handleDownloadHtml = async () => {
-    if (isTrial && onUpgrade) {
+  const handleDownloadHtml = async (e?: React.MouseEvent) => {
+    console.log('📥 handleDownloadHtml called', { e, subscriptionStatus });
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (subscriptionStatus && subscriptionStatus.isTrial && subscriptionStatus.reportsRemaining === 0 && subscriptionStatus.needsUpgrade && onUpgrade) {
       onUpgrade();
       return;
     }
@@ -983,22 +1072,46 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
     const seconds = String(now.getSeconds()).padStart(2, '0');
     const filename = `The_Zulu_Method_CAB_Report_${year}${month}${day}_${hours}${minutes}${seconds}.html`;
     
-    const element = document.createElement("a");
-    const file = new Blob([fullHtml], {type: 'text/html'});
-    element.href = URL.createObjectURL(file);
-    element.download = filename;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    try {
+      const element = document.createElement("a");
+      const file = new Blob([fullHtml], {type: 'text/html'});
+      const url = URL.createObjectURL(file);
+      element.href = url;
+      element.download = filename;
+      document.body.appendChild(element);
+      element.click();
+      // Clean up after a short delay
+      setTimeout(() => {
+        document.body.removeChild(element);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (error) {
+      console.error('Error creating download:', error);
+      throw error;
+    }
   };
 
   // Print / PDF
-  const handlePrint = () => {
-    if (isTrial && onUpgrade) {
-      onUpgrade();
-      return;
+  const handlePrint = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    window.print();
+    try {
+      if (subscriptionStatus && subscriptionStatus.isTrial && subscriptionStatus.reportsRemaining === 0 && subscriptionStatus.needsUpgrade && onUpgrade) {
+        onUpgrade();
+        return;
+      }
+      // Trigger print dialog
+      if (typeof window !== 'undefined' && window.print) {
+        window.print();
+      } else {
+        throw new Error('Print function not available');
+      }
+    } catch (error) {
+      console.error('Error printing:', error);
+      alert('Unable to open print dialog. Please use your browser\'s print function (Ctrl+P or Cmd+P).');
+    }
   };
 
   // Parse Markdown into Sections based on H1 headers (# )
@@ -1350,6 +1463,75 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
             color: #577AFF;
             font-weight: normal;
           }
+          
+          /* Executive Dashboard table - optimized column widths */
+          /* Category column - tight width (within 20px of longest content ~180px) */
+          .report-content table.executive-dashboard-table th:nth-child(1),
+          .report-content table.executive-dashboard-table td:nth-child(1) {
+            width: 200px;
+            max-width: 200px;
+            min-width: 180px;
+          }
+          /* Status column - tight width (within 20px of emoji content ~60px) */
+          .report-content table.executive-dashboard-table th:nth-child(2),
+          .report-content table.executive-dashboard-table td:nth-child(2) {
+            width: 80px;
+            max-width: 80px;
+            min-width: 60px;
+            text-align: center;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+          }
+          /* Observation column - gets remaining space evenly distributed */
+          .report-content table.executive-dashboard-table th:nth-child(3),
+          .report-content table.executive-dashboard-table td:nth-child(3) {
+            width: auto;
+            min-width: 0;
+          }
+          /* Recommended Action column - gets remaining space evenly distributed */
+          .report-content table.executive-dashboard-table th:nth-child(4),
+          .report-content table.executive-dashboard-table td:nth-child(4) {
+            width: auto;
+            min-width: 0;
+          }
+          /* Ensure table uses fixed layout for column width control */
+          .report-content table.executive-dashboard-table {
+            table-layout: fixed;
+          }
+          
+          /* General table optimization - apply to all content tables */
+          .report-content table.optimized-table {
+            table-layout: fixed;
+          }
+          /* For all optimized tables, tighten first column and distribute space to others */
+          .report-content table.optimized-table th:nth-child(1),
+          .report-content table.optimized-table td:nth-child(1) {
+            width: auto;
+            max-width: 220px;
+            min-width: 120px;
+          }
+          /* Second column - tighten if it's likely short (like status/score columns) */
+          .report-content table.optimized-table th:nth-child(2),
+          .report-content table.optimized-table td:nth-child(2) {
+            width: auto;
+            max-width: 150px;
+            min-width: 80px;
+          }
+          /* Remaining columns get flexible space - distribute evenly */
+          .report-content table.optimized-table th:nth-child(n+3),
+          .report-content table.optimized-table td:nth-child(n+3) {
+            width: auto;
+            min-width: 0;
+          }
+          /* For 2-column tables, give more space to second column */
+          .report-content table.optimized-table:has(thead tr th:nth-child(2):not(:nth-child(3))) th:nth-child(1),
+          .report-content table.optimized-table:has(thead tr th:nth-child(2):not(:nth-child(3))) td:nth-child(1) {
+            max-width: 250px;
+          }
+          .report-content table.optimized-table:has(thead tr th:nth-child(2):not(:nth-child(3))) th:nth-child(2),
+          .report-content table.optimized-table:has(thead tr th:nth-child(2):not(:nth-child(3))) td:nth-child(2) {
+            max-width: none;
+          }
           /* Dark mode overrides for tables - HIGH SPECIFICITY */
           .dark .report-content table,
           .dark.report-content table {
@@ -1533,6 +1715,36 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
         `}</style>
       <div className="w-full max-w-[1400px] mx-auto p-2 md:p-6 animate-in fade-in duration-500 print:p-0 print:max-w-none report-content">
       
+      {/* Report Title, Date, and Time - For saved reports */}
+      {(reportTitle || reportDate || reportTimestamp) && (
+        <div className="mt-4 md:mt-6 mb-8 md:mb-10">
+          {/* Zulu CAB Report Header */}
+          <div className="text-sm md:text-base font-semibold text-[#577AFF] dark:text-[#577AFF] mb-3 text-left">
+            Zulu CAB Report:
+          </div>
+          
+          {/* Report Title */}
+          {reportTitle && (
+            <h1 className="text-2xl md:text-3xl font-bold text-[#051A53] dark:text-[#f3f4f6] mb-2 text-left">
+              {reportTitle.length > 100 
+                ? `${reportTitle.substring(0, 97)}...` 
+                : reportTitle}
+            </h1>
+          )}
+          
+          {/* Date, Time, and Feedback Type */}
+          {(reportDate || reportTimestamp || userInput?.feedbackType) && (
+            <div className="text-sm md:text-base text-[#595657] dark:text-[#9ca3af] flex items-center gap-2 flex-wrap text-left mb-0">
+              {reportDate && <span>{reportDate}</span>}
+              {reportDate && reportTimestamp && <span>•</span>}
+              {reportTimestamp && <span>{reportTimestamp}</span>}
+              {userInput?.feedbackType && (reportDate || reportTimestamp) && <span>•</span>}
+              {userInput?.feedbackType && <span>{userInput.feedbackType}</span>}
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Report Sections - Horizontal Cards Layout */}
       <div className="mb-6 md:mb-8 bg-[#F9FAFD] dark:bg-[#1a1f2e] rounded-xl p-4 md:p-6 border border-[#EEF2FF] dark:border-[#374151]">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1592,7 +1804,7 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
 
           {/* ICP Profile Card */}
           <SectionErrorBoundary sectionName="ICP Profile">
-            {safeIcpProfile ? (
+            {icpProfile !== undefined && icpProfile !== null ? (
               <div className="bg-cyan-50 dark:bg-cyan-950/30 rounded-lg border border-cyan-200 dark:border-cyan-800/50 shadow-sm dark:shadow-[0_0_10px_rgba(87,122,255,0.2)] overflow-hidden cursor-pointer hover:shadow-md dark:hover:shadow-[0_0_15px_rgba(87,122,255,0.3)] transition-shadow"
                 onClick={() => setShowICPProfile(!showICPProfile)}
               >
@@ -1609,12 +1821,7 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
                   {showICPProfile ? <ChevronUp className="w-4 h-4 text-[#595657] dark:text-[#9ca3af]" /> : <ChevronDown className="w-4 h-4 text-[#595657] dark:text-[#9ca3af]" />}
                 </div>
               </div>
-            ) : (
-              <div className="bg-cyan-50 dark:bg-cyan-950/30 rounded-lg border border-cyan-200 dark:border-cyan-800/50 shadow-sm p-4 flex items-center gap-3">
-                <div className="w-5 h-5 border-2 border-[#577AFF] border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm text-[#595657] dark:text-[#9ca3af]">Details loading...</span>
-              </div>
-            )}
+            ) : null}
           </SectionErrorBoundary>
         </div>
       </div>
@@ -1769,6 +1976,240 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
                     <div>
                       <p className="font-semibold text-[#221E1F] dark:text-[#f3f4f6] mb-1"><strong>Age:</strong> {persona.ageRange}</p>
                     </div>
+
+                    {/* Firmographics */}
+                    {persona.firmographics && typeof persona.firmographics === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">Firmographics</h3>
+                        <div className="space-y-1">
+                          {persona.firmographics.companySize && (
+                            <p className="text-sm"><strong>Company Size:</strong> {persona.firmographics.companySize}</p>
+                          )}
+                          {persona.firmographics.companyRevenue && (
+                            <p className="text-sm"><strong>Company Revenue:</strong> {persona.firmographics.companyRevenue}</p>
+                          )}
+                          {persona.firmographics.industry && (
+                            <p className="text-sm"><strong>Industry:</strong> {persona.firmographics.industry}</p>
+                          )}
+                          {persona.firmographics.location && (
+                            <p className="text-sm"><strong>Location:</strong> {persona.firmographics.location}</p>
+                          )}
+                          {persona.firmographics.companyType && (
+                            <p className="text-sm"><strong>Company Type:</strong> {persona.firmographics.companyType}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Demographics */}
+                    {persona.demographics && typeof persona.demographics === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">Demographics</h3>
+                        <div className="space-y-1">
+                          {persona.demographics.education && (
+                            <p className="text-sm"><strong>Education:</strong> {persona.demographics.education}</p>
+                          )}
+                          {persona.demographics.yearsOfExperience && (
+                            <p className="text-sm"><strong>Years of Experience:</strong> {persona.demographics.yearsOfExperience}</p>
+                          )}
+                          {persona.demographics.geographicLocation && (
+                            <p className="text-sm"><strong>Geographic Location:</strong> {persona.demographics.geographicLocation}</p>
+                          )}
+                          {persona.demographics.householdIncome && (
+                            <p className="text-sm"><strong>Household Income:</strong> {persona.demographics.householdIncome}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Online Presence */}
+                    {persona.onlinePresence && typeof persona.onlinePresence === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">Online Presence</h3>
+                        <div className="space-y-2">
+                          {persona.onlinePresence.onlineHangouts && Array.isArray(persona.onlinePresence.onlineHangouts) && persona.onlinePresence.onlineHangouts.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Where They Spend Time Online:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.onlinePresence.onlineHangouts.map((hangout, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {hangout || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.onlinePresence.socialMediaPlatforms && Array.isArray(persona.onlinePresence.socialMediaPlatforms) && persona.onlinePresence.socialMediaPlatforms.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Social Media Platforms:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.onlinePresence.socialMediaPlatforms.map((platform, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {platform || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.onlinePresence.communities && Array.isArray(persona.onlinePresence.communities) && persona.onlinePresence.communities.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Online Communities:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.onlinePresence.communities.map((community, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {community || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.onlinePresence.professionalNetworks && Array.isArray(persona.onlinePresence.professionalNetworks) && persona.onlinePresence.professionalNetworks.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Professional Networks:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.onlinePresence.professionalNetworks.map((network, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {network || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Advertising Reachability */}
+                    {persona.advertisingReachability && typeof persona.advertisingReachability === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">Advertising & Content Reachability</h3>
+                        <div className="space-y-2">
+                          {persona.advertisingReachability.adPlatforms && Array.isArray(persona.advertisingReachability.adPlatforms) && persona.advertisingReachability.adPlatforms.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Best Ad Platforms:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.advertisingReachability.adPlatforms.map((platform, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {platform || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.advertisingReachability.contentChannels && Array.isArray(persona.advertisingReachability.contentChannels) && persona.advertisingReachability.contentChannels.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Best Content Channels:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.advertisingReachability.contentChannels.map((channel, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {channel || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.advertisingReachability.contentFormats && Array.isArray(persona.advertisingReachability.contentFormats) && persona.advertisingReachability.contentFormats.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Preferred Content Formats:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.advertisingReachability.contentFormats.map((format, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {format || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.advertisingReachability.optimalReachTimes && Array.isArray(persona.advertisingReachability.optimalReachTimes) && persona.advertisingReachability.optimalReachTimes.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Optimal Reach Times:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.advertisingReachability.optimalReachTimes.map((time, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {time || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Work Habits */}
+                    {persona.workHabits && typeof persona.workHabits === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">Work Habits</h3>
+                        <div className="space-y-2">
+                          {persona.workHabits.workSchedule && (
+                            <p className="text-sm"><strong>Work Schedule:</strong> {persona.workHabits.workSchedule}</p>
+                          )}
+                          {persona.workHabits.morningRoutine && Array.isArray(persona.workHabits.morningRoutine) && persona.workHabits.morningRoutine.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Morning Routine:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.workHabits.morningRoutine.map((activity, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {activity || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.workHabits.endOfDayRoutine && Array.isArray(persona.workHabits.endOfDayRoutine) && persona.workHabits.endOfDayRoutine.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">End of Day Routine:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.workHabits.endOfDayRoutine.map((activity, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {activity || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.workHabits.workActivities && Array.isArray(persona.workHabits.workActivities) && persona.workHabits.workActivities.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Typical Work Activities:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.workHabits.workActivities.map((activity, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {activity || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* After-Work Habits */}
+                    {persona.afterWorkHabits && typeof persona.afterWorkHabits === 'object' && (
+                      <div>
+                        <h3 className="font-bold text-lg text-[#221E1F] dark:text-[#f3f4f6] mb-2">After-Work Habits</h3>
+                        <div className="space-y-2">
+                          {persona.afterWorkHabits.activities && Array.isArray(persona.afterWorkHabits.activities) && persona.afterWorkHabits.activities.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Activities:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.afterWorkHabits.activities.map((activity, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {activity || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.afterWorkHabits.hobbies && Array.isArray(persona.afterWorkHabits.hobbies) && persona.afterWorkHabits.hobbies.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Hobbies:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.afterWorkHabits.hobbies.map((hobby, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {hobby || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.afterWorkHabits.unwindingActivities && Array.isArray(persona.afterWorkHabits.unwindingActivities) && persona.afterWorkHabits.unwindingActivities.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Unwinding Activities:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.afterWorkHabits.unwindingActivities.map((activity, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {activity || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {persona.afterWorkHabits.offHoursBehaviors && Array.isArray(persona.afterWorkHabits.offHoursBehaviors) && persona.afterWorkHabits.offHoursBehaviors.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-[#221E1F] dark:text-[#f3f4f6] mb-1">Off-Hours Behaviors:</p>
+                              <ul className="list-none space-y-0.5">
+                                {persona.afterWorkHabits.offHoursBehaviors.map((behavior, idx) => (
+                                  <li key={idx} className="pl-0 text-sm">• {behavior || 'N/A'}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Preferred Communication Channels - Moved between Age and Titles */}
                     {persona.preferredCommunicationChannels && Array.isArray(persona.preferredCommunicationChannels) && (
@@ -1960,7 +2401,7 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
 
       {/* ICP Profile Report - Expanded Content */}
         <SectionErrorBoundary sectionName="ICP Profile">
-          {safeIcpProfile && showICPProfile && (
+          {icpProfile && showICPProfile && safeIcpProfile && (
         <div className="mb-6 md:mb-8 bg-white dark:bg-[#111827] rounded-lg border border-[#EEF2FF] dark:border-[#374151] shadow-sm dark:shadow-[0_0_15px_rgba(87,122,255,0.2)] overflow-hidden print:border print:shadow-none">
           <div className="border-t border-[#EEF2FF] dark:border-[#374151] p-4 md:p-6 bg-white dark:bg-[#111827]">
             <div className="space-y-8">
@@ -2034,7 +2475,7 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
               <div>
                 <h2 className="text-xl font-bold text-[#221E1F] dark:text-[#f3f4f6] mb-4 pb-2 border-b-2 border-[#EEF2FF] dark:border-[#374151]">Psychographics</h2>
                 <ul className="list-none space-y-2 text-[#595657] dark:text-[#9ca3af]">
-                    {safeIcpProfile.psychographics.map((item: string, idx: number) => (
+                    {Array.from(new Set(safeIcpProfile.psychographics)).map((item: string, idx: number) => (
                       <li key={idx} className="leading-relaxed pl-0">• {item || 'N/A'}</li>
                   ))}
                 </ul>
@@ -2114,6 +2555,17 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
               )}
             </div>
           </div>
+          
+          {/* Back to Top Link */}
+          <div className="mt-12 pt-6 border-t border-[#EEF2FF] dark:border-[#374151] flex justify-end no-print">
+            <button 
+              onClick={scrollToTop}
+              className="flex items-center gap-1 text-xs font-bold text-[#595657] dark:text-[#9ca3af] hover:text-[#577AFF] dark:hover:text-[#93C5FD] transition-colors uppercase tracking-wider"
+            >
+              Back to top
+              <ArrowUp className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       )}
         </SectionErrorBoundary>
@@ -2161,10 +2613,10 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
         
         <div className="flex gap-2 flex-nowrap justify-end flex-shrink-0 min-w-0 items-center">
             {/* Share button - ALWAYS show unless it's the first free trial report (trial user who just used their free report) */}
-            {onShare && !isTrial && (
+            {onShare && (!subscriptionStatus || !subscriptionStatus.isTrial || subscriptionStatus.reportsRemaining > 0) && (
               <button
                 onClick={() => {
-                  if (isTrial && subscriptionStatus && subscriptionStatus.reportsRemaining === 0 && subscriptionStatus.needsUpgrade && onUpgrade) {
+                  if (subscriptionStatus && subscriptionStatus.isTrial && subscriptionStatus.reportsRemaining === 0 && subscriptionStatus.needsUpgrade && onUpgrade) {
                     onUpgrade();
                     return;
                   }
@@ -2178,7 +2630,11 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
               </button>
             )}
             <button
-                onClick={handlePrint}
+                type="button"
+                onClick={(e) => {
+                  console.log('Print button clicked');
+                  handlePrint(e);
+                }}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#111827] hover:bg-blue-50 dark:hover:bg-blue-900/30 text-[#31458F] dark:text-[#93C5FD] hover:text-[#577AFF] dark:hover:text-[#577AFF] transition-colors text-xs md:text-sm shadow-sm dark:shadow-[0_0_10px_rgba(87,122,255,0.2)] font-medium whitespace-nowrap border border-blue-200 dark:border-blue-800/50 flex-shrink-0"
                 title="Print / PDF"
             >
@@ -2186,7 +2642,16 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({ reportContent, isStreamin
                 <span className="hidden sm:inline">Print / PDF</span>
             </button>
             <button
-                onClick={() => handleDownloadHtml().catch(err => console.error('Error exporting HTML:', err))}
+                type="button"
+                onClick={async (e) => {
+                  console.log('Export HTML button clicked');
+                  try {
+                    await handleDownloadHtml(e);
+                  } catch (err) {
+                    console.error('Error exporting HTML:', err);
+                    alert('Unable to export HTML. Please try again or use your browser\'s save function.');
+                  }
+                }}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#111827] hover:bg-blue-50 dark:hover:bg-blue-900/30 text-[#31458F] dark:text-[#93C5FD] hover:text-[#577AFF] dark:hover:text-[#577AFF] transition-colors text-xs md:text-sm shadow-sm dark:shadow-[0_0_10px_rgba(87,122,255,0.2)] font-medium whitespace-nowrap border border-blue-200 dark:border-blue-800/50 flex-shrink-0"
                 title="Export HTML"
             >

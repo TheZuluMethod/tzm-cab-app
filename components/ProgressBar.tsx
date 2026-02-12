@@ -36,8 +36,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ currentState }) => {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto mb-10 px-[50px] no-print">
-      <div className="flex items-center w-full gap-1">
+    <div className="w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8 no-print">
+      <div className="flex items-center w-full gap-0.5 sm:gap-1">
         {steps.map((step, idx) => {
           const status = getStepStatus(step.id);
           const isLast = idx === steps.length - 1;

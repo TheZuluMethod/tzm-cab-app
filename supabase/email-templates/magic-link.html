@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In to The Zulu Method</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #221E1F;
+            background-color: #F8F9FF;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #577AFF 0%, #31458F 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .logo {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #A1B4FF;
+            font-size: 14px;
+            margin: 0;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #051A53;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .text {
+            font-size: 16px;
+            color: #595657;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .button {
+            display: inline-block;
+            background-color: #577AFF;
+            color: #ffffff !important;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #4A6CF7;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer {
+            background-color: #EEF2FF;
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #595657;
+        }
+        .footer a {
+            color: #577AFF;
+            text-decoration: none;
+        }
+        .info-note {
+            background-color: #F9FAFD;
+            border-left: 4px solid #577AFF;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #595657;
+        }
+        .expiry-note {
+            font-size: 14px;
+            color: #595657;
+            font-style: italic;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .link-text {
+            word-break: break-all;
+            color: #577AFF;
+            font-size: 14px;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #F9FAFD;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">The Zulu Method</div>
+            <p class="subtitle">AI Customer Advisory Board</p>
+        </div>
+        
+        <div class="content">
+            <h1 class="title">Sign In With Your Magic Link</h1>
+            
+            <p class="text">
+                Click the button below to securely sign in to your account. No password needed!
+            </p>
+            
+            <div class="button-container">
+                <a href="{{ .ConfirmationURL }}" class="button">Sign In to Your Account</a>
+            </div>
+            
+            <p class="text" style="text-align: center; margin-top: 30px;">
+                Or copy and paste this link into your browser:
+            </p>
+            
+            <p class="link-text">
+                {{ .ConfirmationURL }}
+            </p>
+            
+            <div class="info-note">
+                <strong>What happened:</strong> You requested a magic link to sign in to your account. This link will expire in 1 hour for your security.
+            </div>
+            
+            <p class="expiry-note">
+                This link expires in 1 hour. If you didn't request this magic link, you can safely ignore this email.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>This email was sent by The Zulu Method</p>
+            <p>
+                <a href="{{ .SiteURL }}">Visit our website</a> | 
+                <a href="mailto:support@thezulumethod.com">Contact Support</a>
+            </p>
+            <p style="font-size: 12px; color: #9ca3af; margin-top: 20px;">
+                If you didn't request this magic link, please ignore this email or contact support if you have concerns.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

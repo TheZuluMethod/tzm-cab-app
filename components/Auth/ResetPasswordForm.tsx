@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { resetPassword, updatePassword } from '../../services/authService';
 import { Mail, Lock, AlertCircle, Loader2, CheckCircle, ArrowLeft } from 'lucide-react';
+import { getLogoUrl } from '../../services/logoService';
 
 interface ResetPasswordFormProps {
   onSuccess?: () => void;
@@ -25,6 +26,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const logoUrl = getLogoUrl();
 
   useEffect(() => {
     // Check if we're in password update mode (after clicking reset link)
@@ -116,7 +118,19 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   if (success && isResetMode) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg border border-[#EEF2FF] p-8 text-center">
+        <div className="bg-[#F8F9FF] rounded-2xl shadow-lg border border-[#EEF2FF] p-8 text-center">
+          {logoUrl && (
+            <div className="flex justify-center mb-6">
+              <img 
+                src={logoUrl} 
+                alt="The Zulu Method Logo" 
+                className="h-12 w-auto"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#221E1F] mb-2">Check Your Email</h2>
           <p className="text-[#595657] mb-4">
@@ -142,7 +156,19 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
   if (success && !isResetMode) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg border border-[#EEF2FF] p-8 text-center">
+        <div className="bg-[#F8F9FF] rounded-2xl shadow-lg border border-[#EEF2FF] p-8 text-center">
+          {logoUrl && (
+            <div className="flex justify-center mb-6">
+              <img 
+                src={logoUrl} 
+                alt="The Zulu Method Logo" 
+                className="h-12 w-auto"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#221E1F] mb-2">Password Updated!</h2>
           <p className="text-[#595657] mb-4">
@@ -163,7 +189,19 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-lg border border-[#EEF2FF] p-8">
+      <div className="bg-[#F8F9FF] rounded-2xl shadow-lg border border-[#EEF2FF] p-8">
+        {logoUrl && (
+          <div className="flex justify-center mb-6">
+            <img 
+              src={logoUrl} 
+              alt="The Zulu Method Logo" 
+              className="h-12 w-auto"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        )}
         <h2 className="text-2xl font-bold text-[#221E1F] mb-6 text-center">
           {isResetMode ? 'Reset Password' : 'Set New Password'}
         </h2>
@@ -189,7 +227,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="your@email.com"
                 />
               </div>
@@ -224,7 +262,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="••••••••"
                 />
               </div>
@@ -245,7 +283,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-[#EEF2FF] rounded-lg bg-white text-[#221E1F] focus:outline-none focus:ring-2 focus:ring-[#577AFF] focus:border-transparent placeholder:text-[#9CA3AF]"
                   placeholder="••••••••"
                 />
               </div>

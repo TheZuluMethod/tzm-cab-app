@@ -14,6 +14,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AuthWrapper from './components/Auth/AuthWrapper';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { reportError, getOrCreateSessionId } from './services/errorReportingService';
+import { getFaviconUrl } from './services/faviconService';
 
 /**
  * Global error handler for uncaught JavaScript errors
@@ -84,6 +85,58 @@ console.error = (...args: unknown[]): void => {
     }
   }
 };
+
+/**
+ * Set favicon dynamically from Supabase Storage
+ */
+const setFavicon = () => {
+  try {
+    const faviconUrl = getFaviconUrl();
+    if (faviconUrl && faviconUrl !== '/favicon.ico') {
+      // Update existing favicon link
+      let faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+      if (!faviconLink) {
+        faviconLink = document.createElement('link');
+        faviconLink.rel = 'icon';
+        faviconLink.type = 'image/png';
+        document.head.appendChild(faviconLink);
+      }
+      faviconLink.href = faviconUrl;
+      
+      // Update apple-touch-icon
+      let appleTouchLink = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement;
+      if (!appleTouchLink) {
+        appleTouchLink = document.createElement('link');
+        appleTouchLink.rel = 'apple-touch-icon';
+        document.head.appendChild(appleTouchLink);
+      }
+      appleTouchLink.href = faviconUrl;
+      
+      // Add additional sizes for better browser support
+      const sizes = ['32x32', '16x16', '192x192', '512x512'];
+      sizes.forEach(size => {
+        const existing = document.querySelector(`link[rel="icon"][sizes="${size}"]`) as HTMLLinkElement;
+        if (!existing) {
+          const link = document.createElement('link');
+          link.rel = 'icon';
+          link.type = 'image/png';
+          link.sizes = size;
+          link.href = faviconUrl;
+          document.head.appendChild(link);
+        } else {
+          existing.href = faviconUrl;
+        }
+      });
+      
+      console.log('✅ Favicon set to:', faviconUrl);
+    }
+  } catch (error) {
+    console.warn('Could not set favicon:', error);
+  }
+};
+
+// Set favicon immediately
+setFavicon();
 
 /**
  * Application root element
